@@ -1,0 +1,69 @@
+apiVersion: db.opentalon.io/v1alpha1
+kind: TalonDB
+metadata:
+  name: talondb-sample
+  labels:
+    app.kubernetes.io/name: talon-db
+    app.kubernetes.io/instance: talondb-sample
+spec:
+  image:
+    repository: ghcr.io/opentalon/talon-db
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+
+  # Rendered into a ConfigMap and mounted at /etc/talondb/config.yaml.
+  config:
+    dbPath: /data/talondb.bbolt
+    tcp: ":9899"
+    http: ":8080"
+
+  # Inject configuration/secrets. talondb-server reads TALONDB_* env vars.
+  # env:
+  #   - name: TALONDB_TCP
+  #     value: ":9899"
+  envFrom:
+    - configMapRef:
+        name: talondb-sample-extra-config
+        optional: true
+    - secretRef:
+        name: talondb-sample-secrets
+        optional: true
+
+  storage:
+    persistence:
+      enabled: true
+      size: 1Gi
+      accessModes:
+        - ReadWriteOnce
+      # storageClassName: standard
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  networking:
+    service:
+      type: ClusterIP
+    ingress:
+      enabled: false
+    networkPolicy:
+      enabled: false
+
+  observability:
+    metrics:
+      enabled: true
+      port: 9090
+      serviceMonitor:
+        enabled: false
+        interval: 30s
+
+  availability:
+    podDisruptionBudget:
+      enabled: false
+    horizontalPodAutoscaler:
+      enabled: false

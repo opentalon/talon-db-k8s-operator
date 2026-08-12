@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install kustomize
+        run: |
+          curl -sL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Generate CRD manifest
+        run: |
+          cat config/crd/bases/*.yaml > talon-db-operator.crds.yaml
+
+      - name: Generate full install manifest
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          cd config/default
+          kustomize edit set image ghcr.io/opentalon/talon-db-operator=${{ env.REGISTRY }}/opentalon/talon-db-operator:${VERSION}
+          cd ${{ github.workspace }}
+          kustomize build config/default > talon-db-operator.install.yaml
+          git checkout config/default/kustomization.yaml
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sign-images:
+    name: Sign and Attest
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker image name
+        id: docker-image
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "name=${{ env.REGISTRY }}/${OWNER}/talon-db-operator" >> $GITHUB_OUTPUT
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Sign container images
+        run: |
+          IMAGE="${{ steps.docker-image.outputs.name }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          TAGS=("latest" "${VERSION}" "${MAJOR}.${MINOR}")
+
+          for tag in "${TAGS[@]}"; do
+            echo "Signing ${IMAGE}:${tag}..."
+            DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${tag}" --format '{{json .Manifest}}' | jq -r '.digest')
+            if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
+              cosign sign --yes "${IMAGE}:${tag}@${DIGEST}"
+            else
+              echo "Warning: could not resolve digest for ${IMAGE}:${tag}, skipping"
+            fi
+          done
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.docker-image.outputs.name }}:${{ steps.version.outputs.version }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-release-assets: false
+
+      - name: Attest SBOM
+        run: |
+          IMAGE="${{ steps.docker-image.outputs.name }}"
+          DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${{ steps.version.outputs.version }}" --format '{{json .Manifest}}' | jq -r '.digest')
+          cosign attest --yes --predicate sbom.spdx.json --type spdxjson \
+            "${IMAGE}@${DIGEST}"
+
+      - name: Upload SBOM to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" sbom.spdx.json --clobber
+
+  helm-release:
+    name: Helm Chart Release
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lowercase owner name
+        id: owner
+        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and push Helm chart to OCI registry
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          helm package charts/talon-db-operator --version "${VERSION}" --app-version "${VERSION}"
+          helm push "talon-db-operator-${VERSION}.tgz" oci://ghcr.io/${{ steps.owner.outputs.name }}/charts

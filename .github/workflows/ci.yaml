@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  GO_VERSION: '1.24'
+  REGISTRY: ghcr.io
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.7.2
+
+  reconcile-guard:
+    name: Reconcile Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for unconditional Update on managed resources
+        run: |
+          # Detect bare r.Update/r.Create calls in the controller that bypass
+          # controllerutil.CreateOrUpdate. Only r.Update(ctx, instance) and
+          # r.Status().Update(ctx, instance) are allowed (CR-level updates).
+          VIOLATIONS=$(grep -n 'r\.Update(ctx,' internal/controller/opentaloninstance_controller.go \
+            | grep -v 'instance)' \
+            | grep -v '// reconcile-guard:allow' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Found bare r.Update() calls on managed resources. Use controllerutil.CreateOrUpdate instead."
+            echo "Violations:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "If this is intentional, add '// reconcile-guard:allow' to the line."
+            exit 1
+          fi
+          echo "No unconditional Update calls on managed resources found."
+
+  helm-rbac-sync:
+    name: Helm RBAC Sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Helm chart RBAC matches kubebuilder markers
+        run: bash hack/check-helm-rbac-sync.sh
+
+  helm-crd-sync:
+    name: Helm CRD Sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Helm chart CRD templates match generated CRDs
+        run: bash hack/sync-chart-crds.sh --check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run tests
+        run: make test
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cover.out
+          fail_ci_if_error: false
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: -exclude-generated ./...
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+
+  build:
+    name: Build
+    needs: [lint, test, security-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase image name
+        id: image
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  e2e:
+    name: E2E Tests
+    needs: [lint, test, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Lowercase image name
+        id: image
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: e2e-test
+
+      - name: Build operator image for kind
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:e2e .
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:e2e --name e2e-test
+
+      - name: Install CRDs
+        run: make install
+
+      - name: Deploy operator
+        run: |
+          make deploy IMG=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:e2e
+
+      - name: Wait for operator
+        run: |
+          kubectl wait --for=condition=available --timeout=180s \
+            deployment/talon-db-operator-controller-manager \
+            -n talon-db-operator-system
+
+      - name: Debug operator status
+        if: failure()
+        run: |
+          echo "=== Deployment status ==="
+          kubectl get deployment -n talon-db-operator-system
+          echo "=== Pod status ==="
+          kubectl get pods -n talon-db-operator-system
+          echo "=== Pod logs ==="
+          kubectl logs -n talon-db-operator-system -l control-plane=controller-manager --tail=100 || true
+          echo "=== Pod describe ==="
+          kubectl describe pods -n talon-db-operator-system || true
+
+      - name: Dump operator logs on failure
+        if: failure()
+        run: |
+          echo "=== Operator pod status ==="
+          kubectl get pods -n talon-db-operator-system
+          echo "=== OpenTalonInstance resources ==="
+          kubectl get talondbs -A -o wide || true
+          echo "=== Operator logs ==="
+          kubectl logs -n talon-db-operator-system -l control-plane=controller-manager --tail=-1 || true

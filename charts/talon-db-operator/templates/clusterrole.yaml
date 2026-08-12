@@ -1,0 +1,59 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "talon-db-operator.fullname" . }}-manager-role
+  labels:
+    {{- include "talon-db-operator.labels" . | nindent 4 }}
+rules:
+  # Core resources
+  - apiGroups: [""]
+    resources: ["configmaps", "events", "persistentvolumeclaims", "secrets", "serviceaccounts", "services"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # StatefulSets
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # Autoscaling resources
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # Leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # Prometheus Operator ServiceMonitor (CRD — optional)
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # Networking resources
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # TalonDB resources
+  - apiGroups: ["db.opentalon.io"]
+    resources: ["talondbs"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["db.opentalon.io"]
+    resources: ["talondbs/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["db.opentalon.io"]
+    resources: ["talondbs/status"]
+    verbs: ["get", "patch", "update"]
+
+  # Policy resources
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+
+  # RBAC resources
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings", "roles"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+{{- end }}

@@ -1,0 +1,105 @@
+# Default values for talon-db-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Number of operator controller-manager replicas.
+replicaCount: 1
+
+image:
+  # -- Operator image repository.
+  repository: ghcr.io/opentalon/talon-db-operator
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# -- Image pull secrets for the operator pod.
+imagePullSecrets: []
+
+# -- Override the chart name.
+nameOverride: ""
+
+# -- Override the full name.
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Specifies whether a service account should be created.
+  create: true
+  # -- Annotations to add to the service account.
+  annotations: {}
+  # -- The name of the service account to use.
+  # -- If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# -- Additional pod annotations for the operator pod.
+podAnnotations: {}
+
+# -- Pod security context for the operator pod.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container security context for the manager container.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- Resource requests and limits for the manager container.
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+# -- Node selector for the operator pod.
+nodeSelector: {}
+
+# -- Tolerations for the operator pod.
+tolerations: []
+
+# -- Affinity rules for the operator pod.
+affinity: {}
+
+# Manager configuration.
+manager:
+  # -- Address on which to bind the metrics endpoint.
+  metricsBindAddress: ":8443"
+  # -- Address on which to bind the health probe endpoint.
+  healthProbeBindAddress: ":8081"
+  # -- Enable leader election for high-availability deployments.
+  leaderElect: true
+  # -- Serve metrics over HTTPS.
+  metricsSecure: true
+  # -- Enable HTTP/2 (disabled by default for security).
+  enableHTTP2: false
+
+# RBAC configuration.
+rbac:
+  # -- Whether to create RBAC resources (ClusterRole and ClusterRoleBinding).
+  create: true
+
+# CRD installation.
+crds:
+  # -- Whether to install CRDs as part of the Helm chart.
+  install: true
+  # -- Keep CRDs on chart uninstall.
+  keep: true
+
+# -- Namespace where the operator is deployed.
+# -- Defaults to the release namespace.
+operatorNamespace: ""
+
+# Metrics service.
+metricsService:
+  # -- Whether to create a Service for the metrics endpoint.
+  create: true
+  # -- Service port for metrics.
+  port: 8443
+  # -- Service type.
+  type: ClusterIP

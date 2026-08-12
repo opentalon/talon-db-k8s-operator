@@ -1,0 +1,23 @@
+apiVersion: v2
+name: talon-db-operator
+description: Kubernetes operator for managing OpenTalon LLM orchestration platform instances
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - opentalon
+  - llm
+  - operator
+  - ai
+  - orchestration
+home: https://github.com/opentalon/talon-db-k8s-operator
+sources:
+  - https://github.com/opentalon/talon-db-k8s-operator
+maintainers:
+  - name: OpenTalon Authors
+    url: https://github.com/opentalon
+icon: https://raw.githubusercontent.com/opentalon/opentalon/main/docs/logo.png
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/operator: "true"
+  artifacthub.io/operatorCapabilities: Full Lifecycle
