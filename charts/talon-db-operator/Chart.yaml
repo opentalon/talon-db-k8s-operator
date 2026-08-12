@@ -2,7 +2,7 @@ apiVersion: v2
 name: talon-db-operator
 description: Kubernetes operator for managing OpenTalon LLM orchestration platform instances
 type: application
-version: 0.1.1
+version: 0.2.0
 appVersion: "latest"
 keywords:
   - opentalon

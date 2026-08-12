@@ -22,9 +22,29 @@ import (
 	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildService creates the client-facing Service exposing the gRPC, HTTP and
-// (optionally) metrics ports.
+// BuildService creates the standalone client-facing Service exposing the
+// gRPC, HTTP and (optionally) metrics ports.
 func BuildService(instance *v1alpha1.TalonDB) *corev1.Service {
+	return serviceWith(instance, ResourceName(instance), SelectorLabels(instance))
+}
+
+// BuildWriteService is the replicated-mode primary Service; it targets the
+// leader pod only, so clients that write always hit the single writer.
+func BuildWriteService(instance *v1alpha1.TalonDB) *corev1.Service {
+	return serviceWith(instance, ResourceName(instance), roleSelector(instance, RoleLeader))
+}
+
+// BuildReadService is the replicated-mode load-balanced read Service. It
+// targets follower pods, falling back to the leader when there are none.
+func BuildReadService(instance *v1alpha1.TalonDB) *corev1.Service {
+	role := RoleFollower
+	if instance.Spec.Replication.ReadReplicas == 0 {
+		role = RoleLeader
+	}
+	return serviceWith(instance, ReadServiceName(instance), roleSelector(instance, role))
+}
+
+func serviceWith(instance *v1alpha1.TalonDB, name string, selector map[string]string) *corev1.Service {
 	svcSpec := instance.Spec.Networking.Service
 	svcType := svcSpec.Type
 	if svcType == "" {
@@ -42,14 +62,14 @@ func BuildService(instance *v1alpha1.TalonDB) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        ResourceName(instance),
+			Name:        name,
 			Namespace:   instance.Namespace,
 			Labels:      svcLabels,
 			Annotations: svcSpec.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     svcType,
-			Selector: SelectorLabels(instance),
+			Selector: selector,
 			Ports:    buildServicePorts(instance),
 		},
 	}

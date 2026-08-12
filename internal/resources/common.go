@@ -90,6 +90,47 @@ func SelectorLabels(instance *v1alpha1.TalonDB) map[string]string {
 	}
 }
 
+// RoleLabelKey distinguishes leader vs follower pods in replicated mode.
+const RoleLabelKey = "db.opentalon.io/role"
+
+// Role values.
+const (
+	RoleStandalone = "standalone"
+	RoleLeader     = "leader"
+	RoleFollower   = "follower"
+)
+
+// roleSelector returns SelectorLabels plus the role label — used as the
+// (immutable) selector for the leader/follower StatefulSets and the
+// read/write Services in replicated mode.
+func roleSelector(instance *v1alpha1.TalonDB, role string) map[string]string {
+	m := SelectorLabels(instance)
+	m[RoleLabelKey] = role
+	return m
+}
+
+// withRole returns a copy of base with the role label added.
+func withRole(base map[string]string, role string) map[string]string {
+	m := make(map[string]string, len(base)+1)
+	for k, v := range base {
+		m[k] = v
+	}
+	m[RoleLabelKey] = role
+	return m
+}
+
+// Replicated-mode resource names.
+func LeaderStatefulSetName(instance *v1alpha1.TalonDB) string   { return instance.Name + "-leader" }
+func FollowerStatefulSetName(instance *v1alpha1.TalonDB) string { return instance.Name + "-follower" }
+
+// ReadServiceName is the load-balanced read-only Service (followers).
+func ReadServiceName(instance *v1alpha1.TalonDB) string { return instance.Name + "-read" }
+
+// Replicated reports whether the instance runs in leader/follower mode.
+func Replicated(instance *v1alpha1.TalonDB) bool {
+	return instance.Spec.Mode == "replicated"
+}
+
 // ImageRef builds the fully-qualified image reference. A digest takes
 // precedence over the tag; defaults fill in when unset.
 func ImageRef(spec v1alpha1.ImageSpec) string {

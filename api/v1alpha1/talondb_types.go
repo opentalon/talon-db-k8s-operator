@@ -113,6 +113,22 @@ type StorageSpec struct {
 	Persistence PersistenceSpec `json:"persistence,omitempty"`
 }
 
+// ReplicationSpec configures replicated mode (one leader + N followers).
+type ReplicationSpec struct {
+	// ReadReplicas is the number of follower pods. 0 runs a leader only
+	// (the read Service then falls back to the leader).
+	// +optional
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
+	ReadReplicas int32 `json:"readReplicas,omitempty"`
+	// OplogRetention bounds the leader's op-log (max entries kept). 0 uses
+	// the server default (100000). A follower behind the retained window
+	// re-bootstraps from a fresh snapshot.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	OplogRetention int64 `json:"oplogRetention,omitempty"`
+}
+
 // ServiceSpec configures the client-facing Service.
 type ServiceSpec struct {
 	// +optional
@@ -266,6 +282,18 @@ type SecuritySpec struct {
 // replica creates independent databases (each pod owns its own volume); it is
 // NOT a replicated/HA cluster.
 type TalonDBSpec struct {
+	// Mode selects the topology. "standalone" (default) runs a single
+	// StatefulSet. "replicated" runs a single-writer leader plus N
+	// read-only follower replicas that stream the leader's op-log.
+	// +optional
+	// +kubebuilder:validation:Enum=standalone;replicated
+	// +kubebuilder:default=standalone
+	Mode string `json:"mode,omitempty"`
+
+	// Replication configures the replicated mode (ignored when standalone).
+	// +optional
+	Replication ReplicationSpec `json:"replication,omitempty"`
+
 	// +optional
 	Image ImageSpec `json:"image,omitempty"`
 

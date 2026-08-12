@@ -5926,6 +5926,16 @@ spec:
                   - name
                   type: object
                 type: array
+              mode:
+                default: standalone
+                description: |-
+                  Mode selects the topology. "standalone" (default) runs a single
+                  StatefulSet. "replicated" runs a single-writer leader plus N
+                  read-only follower replicas that stream the leader's op-log.
+                enum:
+                - standalone
+                - replicated
+                type: string
               networking:
                 description: NetworkingSpec groups Service/Ingress/NetworkPolicy configuration.
                 properties:
@@ -6428,6 +6438,27 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              replication:
+                description: Replication configures the replicated mode (ignored when
+                  standalone).
+                properties:
+                  oplogRetention:
+                    description: |-
+                      OplogRetention bounds the leader's op-log (max entries kept). 0 uses
+                      the server default (100000). A follower behind the retained window
+                      re-bootstraps from a fresh snapshot.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                  readReplicas:
+                    default: 1
+                    description: |-
+                      ReadReplicas is the number of follower pods. 0 runs a leader only
+                      (the read Service then falls back to the leader).
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
               resources:
                 description: ResourceRequirements describes the compute resource requirements.
                 properties:

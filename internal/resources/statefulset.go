@@ -15,6 +15,8 @@
 package resources
 
 import (
+	"strconv"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,36 +32,91 @@ const containerName = "talondb"
 // chowned to this group so the non-root process can write the bbolt file.
 const defaultFSGroup int64 = 65532
 
-// BuildStatefulSet constructs the StatefulSet for a TalonDB instance.
-// configHash is the hash of the rendered config; it is stamped on the pod
-// template so config changes trigger a rolling restart.
+// stsParams captures the per-role knobs that differ between the
+// standalone / leader / follower StatefulSets.
+type stsParams struct {
+	name         string // StatefulSet name
+	role         string // RoleStandalone | RoleLeader | RoleFollower
+	replicas     int32
+	selectorRole bool            // include the role label in the (immutable) selector
+	extraEnv     []corev1.EnvVar // operator-injected env (role, replicate-from, ...)
+}
+
+// BuildStatefulSet constructs the standalone StatefulSet for a TalonDB
+// instance. configHash is the hash of the rendered config; it is stamped
+// on the pod template so config changes trigger a rolling restart.
 func BuildStatefulSet(instance *v1alpha1.TalonDB, configHash string) *appsv1.StatefulSet {
 	replicas := int32(1)
 	if instance.Spec.Replicas != nil {
 		replicas = *instance.Spec.Replicas
 	}
+	return buildStatefulSet(instance, configHash, stsParams{
+		name: ResourceName(instance), role: RoleStandalone, replicas: replicas,
+	})
+}
+
+// BuildLeaderStatefulSet builds the single-writer leader (1 replica) for
+// replicated mode. retention bounds the op-log (0 = server default).
+func BuildLeaderStatefulSet(instance *v1alpha1.TalonDB, configHash string, retention int64) *appsv1.StatefulSet {
+	env := []corev1.EnvVar{{Name: "TALONDB_ROLE", Value: RoleLeader}}
+	env = append(env, oplogRetentionEnv(retention)...)
+	return buildStatefulSet(instance, configHash, stsParams{
+		name: LeaderStatefulSetName(instance), role: RoleLeader, replicas: 1,
+		selectorRole: true, extraEnv: env,
+	})
+}
+
+// BuildFollowerStatefulSet builds the read-only follower set for
+// replicated mode. leaderAddr is the gRPC address followers replicate
+// from (the write Service).
+func BuildFollowerStatefulSet(instance *v1alpha1.TalonDB, configHash, leaderAddr string, replicas int32, retention int64) *appsv1.StatefulSet {
+	env := []corev1.EnvVar{
+		{Name: "TALONDB_ROLE", Value: RoleFollower},
+		{Name: "TALONDB_REPLICATE_FROM", Value: leaderAddr},
+	}
+	env = append(env, oplogRetentionEnv(retention)...)
+	return buildStatefulSet(instance, configHash, stsParams{
+		name: FollowerStatefulSetName(instance), role: RoleFollower, replicas: replicas,
+		selectorRole: true, extraEnv: env,
+	})
+}
+
+func oplogRetentionEnv(retention int64) []corev1.EnvVar {
+	if retention <= 0 {
+		return nil
+	}
+	return []corev1.EnvVar{{Name: "TALONDB_OPLOG_RETENTION", Value: strconv.FormatInt(retention, 10)}}
+}
+
+func buildStatefulSet(instance *v1alpha1.TalonDB, configHash string, p stsParams) *appsv1.StatefulSet {
+	replicas := p.replicas
 
 	podAnnotations := map[string]string{ConfigHashAnnotation: configHash}
 	for k, v := range instance.Spec.PodAnnotations {
 		podAnnotations[k] = v
 	}
 
+	selector := SelectorLabels(instance)
+	if p.selectorRole {
+		selector = roleSelector(instance, p.role)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ResourceName(instance),
+			Name:      p.name,
 			Namespace: instance.Namespace,
-			Labels:    Labels(instance),
+			Labels:    withRole(Labels(instance), p.role),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas:            &replicas,
 			ServiceName:         HeadlessServiceName(instance),
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: SelectorLabels(instance),
+				MatchLabels: selector,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      Labels(instance),
+					Labels:      withRole(Labels(instance), p.role),
 					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
@@ -70,7 +127,7 @@ func BuildStatefulSet(instance *v1alpha1.TalonDB, configHash string) *appsv1.Sta
 					Tolerations:        instance.Spec.Tolerations,
 					Affinity:           instance.Spec.Affinity,
 					InitContainers:     instance.Spec.InitContainers,
-					Containers:         buildContainers(instance),
+					Containers:         buildContainers(instance, p.extraEnv),
 					Volumes:            buildVolumes(instance),
 				},
 			},
@@ -86,14 +143,14 @@ func BuildStatefulSet(instance *v1alpha1.TalonDB, configHash string) *appsv1.Sta
 	return sts
 }
 
-func buildContainers(instance *v1alpha1.TalonDB) []corev1.Container {
-	main := buildMainContainer(instance)
+func buildContainers(instance *v1alpha1.TalonDB, extraEnv []corev1.EnvVar) []corev1.Container {
+	main := buildMainContainer(instance, extraEnv)
 	containers := []corev1.Container{main}
 	containers = append(containers, instance.Spec.AdditionalContainers...)
 	return containers
 }
 
-func buildMainContainer(instance *v1alpha1.TalonDB) corev1.Container {
+func buildMainContainer(instance *v1alpha1.TalonDB, extraEnv []corev1.EnvVar) corev1.Container {
 	httpPort := PortFromAddr(instance.Spec.Config.HTTP, DefaultHTTPPort)
 	grpcPort := PortFromAddr(instance.Spec.Config.TCP, DefaultGRPCPort)
 
@@ -119,7 +176,7 @@ func buildMainContainer(instance *v1alpha1.TalonDB) corev1.Container {
 		ImagePullPolicy: instance.Spec.Image.PullPolicy,
 		Args:            []string{"--config", ConfigMountPath + "/" + ConfigFileName},
 		Ports:           ports,
-		Env:             instance.Spec.Env,
+		Env:             append(append([]corev1.EnvVar(nil), instance.Spec.Env...), extraEnv...),
 		EnvFrom:         instance.Spec.EnvFrom,
 		Resources:       instance.Spec.Resources,
 		VolumeMounts:    volumeMounts,
