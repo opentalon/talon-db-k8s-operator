@@ -22,8 +22,32 @@ HorizontalPodAutoscaler.
 - **Health probes**: HTTP `GET /v1/health` liveness/readiness/startup probes.
 - **Config-driven rollouts**: a config-hash annotation rolls pods when config changes.
 
-> **Note:** talon-db is single-node. `spec.replicas > 1` creates *independent*
-> databases (each pod owns its own volume) — it is **not** a replicated HA cluster.
+> **Note:** in `mode: standalone`, `spec.replicas > 1` creates *independent*
+> databases (each pod owns its own volume) — it is **not** an HA cluster.
+
+## Replicated mode
+
+Set `spec.mode: replicated` to run a single-writer **leader** plus N read-only
+**follower** replicas that stream the leader's op-log (async read-replicas):
+
+```yaml
+spec:
+  mode: replicated
+  replication:
+    readReplicas: 2
+    oplogRetention: 100000
+```
+
+The operator provisions a `-leader` StatefulSet (1 writer) and a `-follower`
+StatefulSet (N replicas, each with its own PVC), and two Services:
+
+- `<name>` — writes, targets the leader only.
+- `<name>-read` — load-balanced reads across followers (falls back to the leader
+  when `readReplicas: 0`).
+
+Followers bootstrap from the leader's snapshot then tail its op-log; they reject
+writes. This is async replication (warm standbys / read scaling), **not**
+linearizable HA with automatic failover.
 
 ## Quick start
 

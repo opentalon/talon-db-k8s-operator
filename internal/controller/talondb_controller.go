@@ -189,20 +189,57 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 	}
 	managed = append(managed, "Service/"+headless.Name)
 
-	// StatefulSet.
-	sts := resources.BuildStatefulSet(instance, configHash)
-	if err := r.createOrUpdateStatefulSet(ctx, instance, sts); err != nil {
-		return fmt.Errorf("StatefulSet: %w", err)
-	}
-	managed = append(managed, "StatefulSet/"+sts.Name)
+	// StatefulSet(s) + serving Service(s).
+	if resources.Replicated(instance) {
+		retention := instance.Spec.Replication.OplogRetention
+		grpcPort := resources.PortFromAddr(instance.Spec.Config.TCP, resources.DefaultGRPCPort)
+		leaderAddr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", resources.ResourceName(instance), instance.Namespace, grpcPort)
 
-	// Client Service.
-	svc := resources.BuildService(instance)
-	if err := r.createOrUpdateService(ctx, instance, svc); err != nil {
-		return fmt.Errorf("service: %w", err)
+		leader := resources.BuildLeaderStatefulSet(instance, configHash, retention)
+		if err := r.createOrUpdateStatefulSet(ctx, instance, leader); err != nil {
+			return fmt.Errorf("leader StatefulSet: %w", err)
+		}
+		managed = append(managed, "StatefulSet/"+leader.Name)
+
+		if instance.Spec.Replication.ReadReplicas > 0 {
+			followers := resources.BuildFollowerStatefulSet(instance, configHash, leaderAddr, instance.Spec.Replication.ReadReplicas, retention)
+			if err := r.createOrUpdateStatefulSet(ctx, instance, followers); err != nil {
+				return fmt.Errorf("follower StatefulSet: %w", err)
+			}
+			managed = append(managed, "StatefulSet/"+followers.Name)
+		} else {
+			// Scaled to zero followers: remove any previously-created set.
+			if err := r.deleteStatefulSetIfExists(ctx, instance.Namespace, resources.FollowerStatefulSetName(instance)); err != nil {
+				return fmt.Errorf("prune follower StatefulSet: %w", err)
+			}
+		}
+
+		writeSvc := resources.BuildWriteService(instance)
+		if err := r.createOrUpdateService(ctx, instance, writeSvc); err != nil {
+			return fmt.Errorf("write Service: %w", err)
+		}
+		managed = append(managed, "Service/"+writeSvc.Name)
+
+		readSvc := resources.BuildReadService(instance)
+		if err := r.createOrUpdateService(ctx, instance, readSvc); err != nil {
+			return fmt.Errorf("read Service: %w", err)
+		}
+		managed = append(managed, "Service/"+readSvc.Name)
+		r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Services reconciled")
+	} else {
+		sts := resources.BuildStatefulSet(instance, configHash)
+		if err := r.createOrUpdateStatefulSet(ctx, instance, sts); err != nil {
+			return fmt.Errorf("StatefulSet: %w", err)
+		}
+		managed = append(managed, "StatefulSet/"+sts.Name)
+
+		svc := resources.BuildService(instance)
+		if err := r.createOrUpdateService(ctx, instance, svc); err != nil {
+			return fmt.Errorf("service: %w", err)
+		}
+		managed = append(managed, "Service/"+svc.Name)
+		r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Service reconciled")
 	}
-	managed = append(managed, "Service/"+svc.Name)
-	r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Service reconciled")
 
 	// Ingress (optional).
 	if instance.Spec.Networking.Ingress.Enabled {
@@ -267,17 +304,27 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 	return nil
 }
 
+// primaryStatefulSetName is the StatefulSet whose readiness gates the
+// instance phase: the leader in replicated mode, else the sole set.
+func primaryStatefulSetName(instance *talondbv1alpha1.TalonDB) string {
+	if resources.Replicated(instance) {
+		return resources.LeaderStatefulSetName(instance)
+	}
+	return resources.ResourceName(instance)
+}
+
 func (r *TalonDBReconciler) syncStatus(ctx context.Context, instance *talondbv1alpha1.TalonDB) (ctrl.Result, error) {
 	sts := &appsv1.StatefulSet{}
-	if err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: resources.ResourceName(instance)}, sts); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: primaryStatefulSetName(instance)}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		return ctrl.Result{}, err
 	}
 
+	// The leader always runs a single writer; standalone honors spec.replicas.
 	desiredReplicas := int32(1)
-	if instance.Spec.Replicas != nil {
+	if !resources.Replicated(instance) && instance.Spec.Replicas != nil {
 		desiredReplicas = *instance.Spec.Replicas
 	}
 	ready := sts.Status.ReadyReplicas
@@ -418,6 +465,22 @@ func (r *TalonDBReconciler) createOrUpdateStatefulSet(ctx context.Context, insta
 	existing.Spec.Template = desired.Spec.Template
 	existing.Labels = desired.Labels
 	return r.Update(ctx, existing)
+}
+
+// deleteStatefulSetIfExists removes a StatefulSet by name, ignoring
+// not-found. Used to prune the follower set when readReplicas drops to 0.
+func (r *TalonDBReconciler) deleteStatefulSetIfExists(ctx context.Context, namespace, name string) error {
+	existing := &appsv1.StatefulSet{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, existing); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if err := r.Delete(ctx, existing); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func (r *TalonDBReconciler) createOrUpdateService(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *corev1.Service) error {

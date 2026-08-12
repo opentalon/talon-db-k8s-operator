@@ -1,0 +1,29 @@
+apiVersion: db.opentalon.io/v1alpha1
+kind: TalonDB
+metadata:
+  name: talondb-replicated
+spec:
+  mode: replicated
+  replication:
+    readReplicas: 2
+    oplogRetention: 100000
+  image:
+    repository: ghcr.io/opentalon/talon-db
+    tag: latest
+    pullPolicy: IfNotPresent
+  config:
+    dbPath: /data/talondb.bbolt
+    tcp: ":9899"
+    http: ":8080"
+  storage:
+    persistence:
+      enabled: true
+      size: 1Gi
+      accessModes:
+        - ReadWriteOnce
+  observability:
+    metrics:
+      enabled: true
+      port: 9090
+# Writes: Service talondb-replicated        (targets the single leader)
+# Reads : Service talondb-replicated-read   (load-balanced across followers)

@@ -184,6 +184,81 @@ func TestBuildStatefulSet_EnvPassthrough(t *testing.T) {
 	}
 }
 
+func envValue(env []corev1.EnvVar, name string) (string, bool) {
+	for _, e := range env {
+		if e.Name == name {
+			return e.Value, true
+		}
+	}
+	return "", false
+}
+
+func TestReplicatedStatefulSets(t *testing.T) {
+	inst := newInstance()
+	inst.Spec.Mode = "replicated"
+	inst.Spec.Config = v1alpha1.TalonDBConfig{TCP: ":9899", HTTP: ":8080"}
+
+	leader := BuildLeaderStatefulSet(inst, "h", 100000)
+	if leader.Name != "db1-leader" {
+		t.Errorf("leader name = %q", leader.Name)
+	}
+	if leader.Spec.Selector.MatchLabels[RoleLabelKey] != RoleLeader {
+		t.Errorf("leader selector missing role=leader: %v", leader.Spec.Selector.MatchLabels)
+	}
+	if *leader.Spec.Replicas != 1 {
+		t.Errorf("leader replicas = %d, want 1", *leader.Spec.Replicas)
+	}
+	lc := leader.Spec.Template.Spec.Containers[0]
+	if v, _ := envValue(lc.Env, "TALONDB_ROLE"); v != RoleLeader {
+		t.Errorf("leader TALONDB_ROLE = %q", v)
+	}
+	if v, _ := envValue(lc.Env, "TALONDB_OPLOG_RETENTION"); v != "100000" {
+		t.Errorf("leader TALONDB_OPLOG_RETENTION = %q", v)
+	}
+
+	fol := BuildFollowerStatefulSet(inst, "h", "db1.ns1.svc.cluster.local:9899", 3, 0)
+	if fol.Name != "db1-follower" {
+		t.Errorf("follower name = %q", fol.Name)
+	}
+	if *fol.Spec.Replicas != 3 {
+		t.Errorf("follower replicas = %d, want 3", *fol.Spec.Replicas)
+	}
+	if fol.Spec.Selector.MatchLabels[RoleLabelKey] != RoleFollower {
+		t.Errorf("follower selector missing role=follower")
+	}
+	fc := fol.Spec.Template.Spec.Containers[0]
+	if v, _ := envValue(fc.Env, "TALONDB_ROLE"); v != RoleFollower {
+		t.Errorf("follower TALONDB_ROLE = %q", v)
+	}
+	if v, _ := envValue(fc.Env, "TALONDB_REPLICATE_FROM"); v != "db1.ns1.svc.cluster.local:9899" {
+		t.Errorf("follower TALONDB_REPLICATE_FROM = %q", v)
+	}
+	if _, ok := envValue(fc.Env, "TALONDB_OPLOG_RETENTION"); ok {
+		t.Errorf("follower should omit retention env when 0")
+	}
+}
+
+func TestReplicatedServices(t *testing.T) {
+	inst := newInstance()
+	inst.Spec.Mode = "replicated"
+	inst.Spec.Replication.ReadReplicas = 2
+
+	write := BuildWriteService(inst)
+	if write.Name != "db1" || write.Spec.Selector[RoleLabelKey] != RoleLeader {
+		t.Errorf("write service name/selector wrong: %s %v", write.Name, write.Spec.Selector)
+	}
+	read := BuildReadService(inst)
+	if read.Name != "db1-read" || read.Spec.Selector[RoleLabelKey] != RoleFollower {
+		t.Errorf("read service name/selector wrong: %s %v", read.Name, read.Spec.Selector)
+	}
+
+	// With 0 read replicas the read service falls back to the leader.
+	inst.Spec.Replication.ReadReplicas = 0
+	if BuildReadService(inst).Spec.Selector[RoleLabelKey] != RoleLeader {
+		t.Errorf("read service should fall back to leader at 0 replicas")
+	}
+}
+
 func TestBuildService_Ports(t *testing.T) {
 	inst := newInstance()
 	inst.Spec.Config = v1alpha1.TalonDBConfig{TCP: ":9899", HTTP: ":8080"}
