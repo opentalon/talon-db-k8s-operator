@@ -39,7 +39,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: manager
-          image: ghcr.io/opentalon/talon-db-operator:latest
+          image: controller:latest
           imagePullPolicy: IfNotPresent
           command:
             - /manager
