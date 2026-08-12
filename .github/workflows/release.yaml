@@ -50,7 +50,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
           cd config/default
-          kustomize edit set image ghcr.io/opentalon/talon-db-operator=${{ env.REGISTRY }}/opentalon/talon-db-operator:${VERSION}
+          kustomize edit set image controller=${{ env.REGISTRY }}/opentalon/talon-db-operator:${VERSION}
           cd ${{ github.workspace }}
           kustomize build config/default > talon-db-operator.install.yaml
           git checkout config/default/kustomization.yaml
