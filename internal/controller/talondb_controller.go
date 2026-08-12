@@ -146,7 +146,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 
 		role := resources.BuildRole(instance)
 		if err := r.createOrUpdateRole(ctx, instance, role); err != nil {
-			return fmt.Errorf("Role: %w", err)
+			return fmt.Errorf("role: %w", err)
 		}
 		managed = append(managed, "Role/"+role.Name)
 
@@ -199,7 +199,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 	// Client Service.
 	svc := resources.BuildService(instance)
 	if err := r.createOrUpdateService(ctx, instance, svc); err != nil {
-		return fmt.Errorf("Service: %w", err)
+		return fmt.Errorf("service: %w", err)
 	}
 	managed = append(managed, "Service/"+svc.Name)
 	r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Service reconciled")
@@ -208,7 +208,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 	if instance.Spec.Networking.Ingress.Enabled {
 		ingress := resources.BuildIngress(instance)
 		if err := r.createOrUpdateIngress(ctx, instance, ingress); err != nil {
-			return fmt.Errorf("Ingress: %w", err)
+			return fmt.Errorf("ingress: %w", err)
 		}
 		managed = append(managed, "Ingress/"+ingress.Name)
 	}
