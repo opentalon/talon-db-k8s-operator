@@ -1,0 +1,49 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of go coverage tool
+*.out
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Build output
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kubebuilder / controller-gen
+testbin/
+
+# Helm chart dependencies
+charts/*/charts/
+charts/*/Chart.lock
+
+# Local env files
+.env
+.env.local
+
+# Generated release manifests
+opentalon-operator.crds.yaml
+opentalon-operator.install.yaml
