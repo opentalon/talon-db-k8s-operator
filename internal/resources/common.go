@@ -117,7 +117,7 @@ func PortFromAddr(addr string, def int32) int32 {
 	if idx < 0 {
 		return def
 	}
-	p, err := strconv.Atoi(addr[idx+1:])
+	p, err := strconv.ParseInt(addr[idx+1:], 10, 32)
 	if err != nil || p <= 0 || p > 65535 {
 		return def
 	}
