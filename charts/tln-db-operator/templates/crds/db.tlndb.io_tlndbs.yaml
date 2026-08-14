@@ -8,20 +8,20 @@ metadata:
     {{- if .Values.crds.keep }}
     "helm.sh/resource-policy": keep
     {{- end }}
-  name: talondbs.db.opentalon.io
+  name: tlndbs.db.tlndb.io
   labels:
-    {{- include "talon-db-operator.labels" . | nindent 4 }}
+    {{- include "tln-db-operator.labels" . | nindent 4 }}
 spec:
-  group: db.opentalon.io
+  group: db.tlndb.io
   names:
     categories:
     - opentalon
-    kind: TalonDB
-    listKind: TalonDBList
-    plural: talondbs
+    kind: TlnDB
+    listKind: TlnDBList
+    plural: tlndbs
     shortNames:
     - tdb
-    singular: talondb
+    singular: tlndb
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -40,7 +40,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TalonDB is the Schema for the talondbs API.
+        description: TlnDB is the Schema for the tlndbs API.
         properties:
           apiVersion:
             description: |-
@@ -61,9 +61,9 @@ spec:
             type: object
           spec:
             description: |-
-              TalonDBSpec defines the desired state of a TalonDB instance.
+              TlnDBSpec defines the desired state of a TlnDB instance.
 
-              talon-db is a single-node, bbolt-backed database. Running more than one
+              tln-db is a single-node, bbolt-backed database. Running more than one
               replica creates independent databases (each pod owns its own volume); it is
               NOT a replicated/HA cluster.
             properties:
@@ -4265,11 +4265,11 @@ spec:
                 type: object
               config:
                 description: |-
-                  TalonDBConfig maps to the talondb-server config.yaml that the operator
-                  renders into a ConfigMap and mounts at /etc/talondb/config.yaml.
+                  TlnDBConfig maps to the tlndb-server config.yaml that the operator
+                  renders into a ConfigMap and mounts at /etc/tlndb/config.yaml.
                 properties:
                   dbPath:
-                    default: /data/talondb.bbolt
+                    default: /data/tlndb.bbolt
                     description: DBPath is the path to the bbolt data file inside
                       the container.
                     type: string
@@ -4429,7 +4429,7 @@ spec:
               envFrom:
                 description: |-
                   EnvFrom injects environment variables from Secrets/ConfigMaps
-                  (e.g. TALONDB_* values or sensitive settings).
+                  (e.g. TLNDB_* values or sensitive settings).
                 items:
                   description: EnvFromSource represents the source of a set of ConfigMaps
                   properties:
@@ -4474,7 +4474,7 @@ spec:
                   type: object
                 type: array
               image:
-                description: ImageSpec configures the talon-db container image.
+                description: ImageSpec configures the tln-db container image.
                 properties:
                   digest:
                     description: Digest pins the image by digest (repo@sha256:...);
@@ -4508,7 +4508,7 @@ spec:
                       x-kubernetes-map-type: atomic
                     type: array
                   repository:
-                    description: Repository is the image repository, e.g. ghcr.io/opentalon/talon-db.
+                    description: Repository is the image repository, e.g. ghcr.io/opentalon/tln-db.
                     type: string
                   tag:
                     description: Tag is the image tag. Ignored when Digest is set.
@@ -6402,7 +6402,7 @@ spec:
                       enabled:
                         default: true
                         description: |-
-                          Enabled turns on the talon-db Prometheus /metrics listener and the
+                          Enabled turns on the tln-db Prometheus /metrics listener and the
                           corresponding Service port. Defaults to true.
                         type: boolean
                       path:
@@ -7012,7 +7012,7 @@ spec:
                 type: array
             type: object
           status:
-            description: TalonDBStatus defines the observed state of a TalonDB instance.
+            description: TlnDBStatus defines the observed state of a TlnDB instance.
             properties:
               conditions:
                 items:

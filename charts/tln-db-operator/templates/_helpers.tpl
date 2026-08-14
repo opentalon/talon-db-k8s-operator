@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "talon-db-operator.name" -}}
+{{- define "tln-db-operator.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this.
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "talon-db-operator.fullname" -}}
+{{- define "tln-db-operator.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "talon-db-operator.chart" -}}
+{{- define "tln-db-operator.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels.
 */}}
-{{- define "talon-db-operator.labels" -}}
-helm.sh/chart: {{ include "talon-db-operator.chart" . }}
-{{ include "talon-db-operator.selectorLabels" . }}
+{{- define "tln-db-operator.labels" -}}
+helm.sh/chart: {{ include "tln-db-operator.chart" . }}
+{{ include "tln-db-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -46,17 +46,17 @@ app.kubernetes.io/part-of: opentalon
 {{/*
 Selector labels.
 */}}
-{{- define "talon-db-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "talon-db-operator.name" . }}
+{{- define "tln-db-operator.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "tln-db-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use.
 */}}
-{{- define "talon-db-operator.serviceAccountName" -}}
+{{- define "tln-db-operator.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "talon-db-operator.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "tln-db-operator.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

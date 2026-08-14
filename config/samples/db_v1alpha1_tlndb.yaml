@@ -1,33 +1,33 @@
-apiVersion: db.opentalon.io/v1alpha1
-kind: TalonDB
+apiVersion: db.tlndb.io/v1alpha1
+kind: TlnDB
 metadata:
-  name: talondb-sample
+  name: tlndb-sample
   labels:
-    app.kubernetes.io/name: talon-db
-    app.kubernetes.io/instance: talondb-sample
+    app.kubernetes.io/name: tln-db
+    app.kubernetes.io/instance: tlndb-sample
 spec:
   image:
-    repository: ghcr.io/opentalon/talon-db
+    repository: ghcr.io/opentalon/tln-db
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
 
-  # Rendered into a ConfigMap and mounted at /etc/talondb/config.yaml.
+  # Rendered into a ConfigMap and mounted at /etc/tlndb/config.yaml.
   config:
-    dbPath: /data/talondb.bbolt
+    dbPath: /data/tlndb.bbolt
     tcp: ":9899"
     http: ":8080"
 
-  # Inject configuration/secrets. talondb-server reads TALONDB_* env vars.
+  # Inject configuration/secrets. tlndb-server reads TLNDB_* env vars.
   # env:
-  #   - name: TALONDB_TCP
+  #   - name: TLNDB_TCP
   #     value: ":9899"
   envFrom:
     - configMapRef:
-        name: talondb-sample-extra-config
+        name: tlndb-sample-extra-config
         optional: true
     - secretRef:
-        name: talondb-sample-secrets
+        name: tlndb-sample-secrets
         optional: true
 
   storage:

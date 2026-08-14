@@ -21,11 +21,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildConfigMap renders the talondb-server config.yaml into a ConfigMap.
-func BuildConfigMap(instance *v1alpha1.TalonDB) *corev1.ConfigMap {
+// BuildConfigMap renders the tlndb-server config.yaml into a ConfigMap.
+func BuildConfigMap(instance *v1alpha1.TlnDB) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName(instance),
@@ -38,14 +38,14 @@ func BuildConfigMap(instance *v1alpha1.TalonDB) *corev1.ConfigMap {
 	}
 }
 
-// renderConfigYAML produces the YAML consumed by talondb-server via --config.
+// renderConfigYAML produces the YAML consumed by tlndb-server via --config.
 // Keys mirror the server's serverConfig struct (db/tcp/http/socket/metrics).
-func renderConfigYAML(instance *v1alpha1.TalonDB) string {
+func renderConfigYAML(instance *v1alpha1.TlnDB) string {
 	cfg := instance.Spec.Config
 
 	dbPath := cfg.DBPath
 	if dbPath == "" {
-		dbPath = DataMountPath + "/talondb.bbolt"
+		dbPath = DataMountPath + "/tlndb.bbolt"
 	}
 	tcp := cfg.TCP
 	if tcp == "" {
@@ -57,7 +57,7 @@ func renderConfigYAML(instance *v1alpha1.TalonDB) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("# Rendered by talon-db-operator. Do not edit.\n")
+	b.WriteString("# Rendered by tln-db-operator. Do not edit.\n")
 	fmt.Fprintf(&b, "db: %q\n", dbPath)
 	fmt.Fprintf(&b, "tcp: %q\n", tcp)
 	fmt.Fprintf(&b, "http: %q\n", httpAddr)

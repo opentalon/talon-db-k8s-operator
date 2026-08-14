@@ -17,7 +17,7 @@ package resources
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
 // Prometheus Operator ServiceMonitor CRD identifiers.
@@ -28,10 +28,10 @@ const (
 )
 
 // BuildServiceMonitor returns an unstructured ServiceMonitor scraping the
-// talon-db metrics port. Using unstructured avoids a hard dependency on the
+// tln-db metrics port. Using unstructured avoids a hard dependency on the
 // prometheus-operator Go types, so the operator still runs when the CRD is
 // absent (the controller degrades gracefully in that case).
-func BuildServiceMonitor(instance *v1alpha1.TalonDB) *unstructured.Unstructured {
+func BuildServiceMonitor(instance *v1alpha1.TlnDB) *unstructured.Unstructured {
 	smSpec := instance.Spec.Observability.Metrics.ServiceMonitor
 
 	interval := smSpec.Interval

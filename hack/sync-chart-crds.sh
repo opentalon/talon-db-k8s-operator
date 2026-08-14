@@ -13,7 +13,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CRD_SRC="${REPO_ROOT}/config/crd/bases"
-CRD_DST="${REPO_ROOT}/charts/talon-db-operator/templates/crds"
+CRD_DST="${REPO_ROOT}/charts/tln-db-operator/templates/crds"
 
 CHECK_MODE=false
 if [[ "${1:-}" == "--check" ]]; then
@@ -36,7 +36,7 @@ generate_template() {
             print "    {{- end }}"
             print $0
             print "  labels:"
-            print "    {{- include \"talon-db-operator.labels\" . | nindent 4 }}"
+            print "    {{- include \"tln-db-operator.labels\" . | nindent 4 }}"
             annotation_done=0
             next
         }

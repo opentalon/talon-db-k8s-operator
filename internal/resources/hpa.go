@@ -19,11 +19,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildHPA creates a HorizontalPodAutoscaler targeting the TalonDB StatefulSet.
-func BuildHPA(instance *v1alpha1.TalonDB) *autoscalingv2.HorizontalPodAutoscaler {
+// BuildHPA creates a HorizontalPodAutoscaler targeting the TlnDB StatefulSet.
+func BuildHPA(instance *v1alpha1.TlnDB) *autoscalingv2.HorizontalPodAutoscaler {
 	hpaSpec := instance.Spec.Availability.HorizontalPodAutoscaler
 
 	minReplicas := int32(1)

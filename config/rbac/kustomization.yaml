@@ -13,4 +13,4 @@ patches:
     patch: |
       - op: replace
         path: /metadata/name
-        value: talon-db-operator-manager-role
+        value: tln-db-operator-manager-role

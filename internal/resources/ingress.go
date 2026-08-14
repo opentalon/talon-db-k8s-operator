@@ -18,11 +18,11 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildIngress creates an Ingress routing to the talon-db HTTP/JSON port.
-func BuildIngress(instance *v1alpha1.TalonDB) *networkingv1.Ingress {
+// BuildIngress creates an Ingress routing to the tln-db HTTP/JSON port.
+func BuildIngress(instance *v1alpha1.TlnDB) *networkingv1.Ingress {
 	ingressSpec := instance.Spec.Networking.Ingress
 
 	httpPort := PortFromAddr(instance.Spec.Config.HTTP, DefaultHTTPPort)

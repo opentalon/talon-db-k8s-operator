@@ -32,8 +32,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	talondbv1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
-	"github.com/opentalon/talon-db-k8s-operator/internal/controller"
+	tlndbv1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
+	"github.com/opentalon/tln-db-k8s-operator/internal/controller"
 )
 
 // Build metadata, injected via -ldflags by goreleaser.
@@ -50,7 +50,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(talondbv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(tlndbv1alpha1.AddToScheme(scheme))
 }
 
 func main() {
@@ -87,9 +87,9 @@ func main() {
 		})
 	}
 
-	operatorNamespace := os.Getenv("TALONDB_OPERATOR_NAMESPACE")
+	operatorNamespace := os.Getenv("TLNDB_OPERATOR_NAMESPACE")
 	if operatorNamespace == "" {
-		operatorNamespace = "talon-db-operator-system"
+		operatorNamespace = "tln-db-operator-system"
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -98,7 +98,7 @@ func main() {
 		WebhookServer:                 webhook.NewServer(webhook.Options{TLSOpts: tlsOpts}),
 		HealthProbeBindAddress:        probeAddr,
 		LeaderElection:                enableLeaderElection,
-		LeaderElectionID:              "talondb-operator-leader.db.opentalon.io",
+		LeaderElectionID:              "tlndb-operator-leader.db.tlndb.io",
 		LeaderElectionNamespace:       operatorNamespace,
 		LeaderElectionReleaseOnCancel: true,
 	})
@@ -107,12 +107,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.TalonDBReconciler{
+	if err = (&controller.TlnDBReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("talondb-controller"),
+		Recorder: mgr.GetEventRecorderFor("tlndb-controller"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "TalonDB")
+		setupLog.Error(err, "unable to create controller", "controller", "TlnDB")
 		os.Exit(1)
 	}
 

@@ -44,15 +44,15 @@ jobs:
 
       - name: Generate CRD manifest
         run: |
-          cat config/crd/bases/*.yaml > talon-db-operator.crds.yaml
+          cat config/crd/bases/*.yaml > tln-db-operator.crds.yaml
 
       - name: Generate full install manifest
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
           cd config/default
-          kustomize edit set image controller=${{ env.REGISTRY }}/opentalon/talon-db-operator:${VERSION}
+          kustomize edit set image controller=${{ env.REGISTRY }}/opentalon/tln-db-operator:${VERSION}
           cd ${{ github.workspace }}
-          kustomize build config/default > talon-db-operator.install.yaml
+          kustomize build config/default > tln-db-operator.install.yaml
           git checkout config/default/kustomization.yaml
 
       - name: Run GoReleaser
@@ -94,7 +94,7 @@ jobs:
         id: docker-image
         run: |
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "name=${{ env.REGISTRY }}/${OWNER}/talon-db-operator" >> $GITHUB_OUTPUT
+          echo "name=${{ env.REGISTRY }}/${OWNER}/tln-db-operator" >> $GITHUB_OUTPUT
 
       - name: Extract version
         id: version
@@ -171,5 +171,5 @@ jobs:
       - name: Package and push Helm chart to OCI registry
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          helm package charts/talon-db-operator --version "${VERSION}" --app-version "${VERSION}"
-          helm push "talon-db-operator-${VERSION}.tgz" oci://ghcr.io/${{ steps.owner.outputs.name }}/charts
+          helm package charts/tln-db-operator --version "${VERSION}" --app-version "${VERSION}"
+          helm push "tln-db-operator-${VERSION}.tgz" oci://ghcr.io/${{ steps.owner.outputs.name }}/charts

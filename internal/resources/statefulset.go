@@ -23,10 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-const containerName = "talondb"
+const containerName = "tlndb"
 
 // defaultFSGroup is the distroless "nonroot" GID; the mounted /data volume is
 // chowned to this group so the non-root process can write the bbolt file.
@@ -42,10 +42,10 @@ type stsParams struct {
 	extraEnv     []corev1.EnvVar // operator-injected env (role, replicate-from, ...)
 }
 
-// BuildStatefulSet constructs the standalone StatefulSet for a TalonDB
+// BuildStatefulSet constructs the standalone StatefulSet for a TlnDB
 // instance. configHash is the hash of the rendered config; it is stamped
 // on the pod template so config changes trigger a rolling restart.
-func BuildStatefulSet(instance *v1alpha1.TalonDB, configHash string) *appsv1.StatefulSet {
+func BuildStatefulSet(instance *v1alpha1.TlnDB, configHash string) *appsv1.StatefulSet {
 	replicas := int32(1)
 	if instance.Spec.Replicas != nil {
 		replicas = *instance.Spec.Replicas
@@ -57,8 +57,8 @@ func BuildStatefulSet(instance *v1alpha1.TalonDB, configHash string) *appsv1.Sta
 
 // BuildLeaderStatefulSet builds the single-writer leader (1 replica) for
 // replicated mode. retention bounds the op-log (0 = server default).
-func BuildLeaderStatefulSet(instance *v1alpha1.TalonDB, configHash string, retention int64) *appsv1.StatefulSet {
-	env := []corev1.EnvVar{{Name: "TALONDB_ROLE", Value: RoleLeader}}
+func BuildLeaderStatefulSet(instance *v1alpha1.TlnDB, configHash string, retention int64) *appsv1.StatefulSet {
+	env := []corev1.EnvVar{{Name: "TLNDB_ROLE", Value: RoleLeader}}
 	env = append(env, oplogRetentionEnv(retention)...)
 	return buildStatefulSet(instance, configHash, stsParams{
 		name: LeaderStatefulSetName(instance), role: RoleLeader, replicas: 1,
@@ -69,10 +69,10 @@ func BuildLeaderStatefulSet(instance *v1alpha1.TalonDB, configHash string, reten
 // BuildFollowerStatefulSet builds the read-only follower set for
 // replicated mode. leaderAddr is the gRPC address followers replicate
 // from (the write Service).
-func BuildFollowerStatefulSet(instance *v1alpha1.TalonDB, configHash, leaderAddr string, replicas int32, retention int64) *appsv1.StatefulSet {
+func BuildFollowerStatefulSet(instance *v1alpha1.TlnDB, configHash, leaderAddr string, replicas int32, retention int64) *appsv1.StatefulSet {
 	env := []corev1.EnvVar{
-		{Name: "TALONDB_ROLE", Value: RoleFollower},
-		{Name: "TALONDB_REPLICATE_FROM", Value: leaderAddr},
+		{Name: "TLNDB_ROLE", Value: RoleFollower},
+		{Name: "TLNDB_REPLICATE_FROM", Value: leaderAddr},
 	}
 	env = append(env, oplogRetentionEnv(retention)...)
 	return buildStatefulSet(instance, configHash, stsParams{
@@ -85,10 +85,10 @@ func oplogRetentionEnv(retention int64) []corev1.EnvVar {
 	if retention <= 0 {
 		return nil
 	}
-	return []corev1.EnvVar{{Name: "TALONDB_OPLOG_RETENTION", Value: strconv.FormatInt(retention, 10)}}
+	return []corev1.EnvVar{{Name: "TLNDB_OPLOG_RETENTION", Value: strconv.FormatInt(retention, 10)}}
 }
 
-func buildStatefulSet(instance *v1alpha1.TalonDB, configHash string, p stsParams) *appsv1.StatefulSet {
+func buildStatefulSet(instance *v1alpha1.TlnDB, configHash string, p stsParams) *appsv1.StatefulSet {
 	replicas := p.replicas
 
 	podAnnotations := map[string]string{ConfigHashAnnotation: configHash}
@@ -143,14 +143,14 @@ func buildStatefulSet(instance *v1alpha1.TalonDB, configHash string, p stsParams
 	return sts
 }
 
-func buildContainers(instance *v1alpha1.TalonDB, extraEnv []corev1.EnvVar) []corev1.Container {
+func buildContainers(instance *v1alpha1.TlnDB, extraEnv []corev1.EnvVar) []corev1.Container {
 	main := buildMainContainer(instance, extraEnv)
 	containers := []corev1.Container{main}
 	containers = append(containers, instance.Spec.AdditionalContainers...)
 	return containers
 }
 
-func buildMainContainer(instance *v1alpha1.TalonDB, extraEnv []corev1.EnvVar) corev1.Container {
+func buildMainContainer(instance *v1alpha1.TlnDB, extraEnv []corev1.EnvVar) corev1.Container {
 	httpPort := PortFromAddr(instance.Spec.Config.HTTP, DefaultHTTPPort)
 	grpcPort := PortFromAddr(instance.Spec.Config.TCP, DefaultGRPCPort)
 
@@ -188,9 +188,9 @@ func buildMainContainer(instance *v1alpha1.TalonDB, extraEnv []corev1.EnvVar) co
 	return c
 }
 
-// buildProbe returns an HTTP GET /v1/health probe on the HTTP port. talon-db's
+// buildProbe returns an HTTP GET /v1/health probe on the HTTP port. tln-db's
 // gRPC Health is a custom method (not grpc.health.v1), so HTTP is used.
-func buildProbe(instance *v1alpha1.TalonDB, httpPort int32, startup bool) *corev1.Probe {
+func buildProbe(instance *v1alpha1.TlnDB, httpPort int32, startup bool) *corev1.Probe {
 	handler := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Path: "/v1/health",
@@ -228,7 +228,7 @@ func buildProbe(instance *v1alpha1.TalonDB, httpPort int32, startup bool) *corev
 	}
 }
 
-func buildVolumes(instance *v1alpha1.TalonDB) []corev1.Volume {
+func buildVolumes(instance *v1alpha1.TlnDB) []corev1.Volume {
 	// Config volume: rendered ConfigMap, or an external one via ConfigFrom.
 	configMapName := ConfigMapName(instance)
 	if instance.Spec.ConfigFrom != nil && instance.Spec.ConfigFrom.Name != "" {
@@ -271,7 +271,7 @@ func buildVolumes(instance *v1alpha1.TalonDB) []corev1.Volume {
 	return volumes
 }
 
-func buildVolumeClaimTemplate(instance *v1alpha1.TalonDB) corev1.PersistentVolumeClaim {
+func buildVolumeClaimTemplate(instance *v1alpha1.TlnDB) corev1.PersistentVolumeClaim {
 	persistence := instance.Spec.Storage.Persistence
 
 	size := persistence.Size
@@ -301,19 +301,19 @@ func buildVolumeClaimTemplate(instance *v1alpha1.TalonDB) corev1.PersistentVolum
 	return pvc
 }
 
-func persistenceEnabled(instance *v1alpha1.TalonDB) bool {
+func persistenceEnabled(instance *v1alpha1.TlnDB) bool {
 	e := instance.Spec.Storage.Persistence.Enabled
 	return e == nil || *e
 }
 
-func serviceAccountName(instance *v1alpha1.TalonDB) string {
+func serviceAccountName(instance *v1alpha1.TlnDB) string {
 	if instance.Spec.ServiceAccountName != "" {
 		return instance.Spec.ServiceAccountName
 	}
 	return ResourceName(instance)
 }
 
-func buildPodSecurityContext(instance *v1alpha1.TalonDB) *corev1.PodSecurityContext {
+func buildPodSecurityContext(instance *v1alpha1.TlnDB) *corev1.PodSecurityContext {
 	if instance.Spec.Security.PodSecurityContext != nil {
 		return instance.Spec.Security.PodSecurityContext
 	}
@@ -328,7 +328,7 @@ func buildPodSecurityContext(instance *v1alpha1.TalonDB) *corev1.PodSecurityCont
 	}
 }
 
-func buildContainerSecurityContext(instance *v1alpha1.TalonDB) *corev1.SecurityContext {
+func buildContainerSecurityContext(instance *v1alpha1.TlnDB) *corev1.SecurityContext {
 	if instance.Spec.Security.ContainerSecurityContext != nil {
 		return instance.Spec.Security.ContainerSecurityContext
 	}

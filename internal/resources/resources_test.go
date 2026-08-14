@@ -21,11 +21,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-func newInstance() *v1alpha1.TalonDB {
-	return &v1alpha1.TalonDB{
+func newInstance() *v1alpha1.TlnDB {
+	return &v1alpha1.TlnDB{
 		ObjectMeta: metav1.ObjectMeta{Name: "db1", Namespace: "ns1"},
 	}
 }
@@ -35,8 +35,8 @@ func TestImageRef(t *testing.T) {
 		spec v1alpha1.ImageSpec
 		want string
 	}{
-		{v1alpha1.ImageSpec{}, "ghcr.io/opentalon/talon-db:latest"},
-		{v1alpha1.ImageSpec{Tag: "v1"}, "ghcr.io/opentalon/talon-db:v1"},
+		{v1alpha1.ImageSpec{}, "ghcr.io/opentalon/tln-db:latest"},
+		{v1alpha1.ImageSpec{Tag: "v1"}, "ghcr.io/opentalon/tln-db:v1"},
 		{v1alpha1.ImageSpec{Repository: "r", Tag: "v1"}, "r:v1"},
 		{v1alpha1.ImageSpec{Repository: "r", Digest: "sha256:abc", Tag: "v1"}, "r@sha256:abc"},
 	}
@@ -68,7 +68,7 @@ func TestPortFromAddr(t *testing.T) {
 
 func TestRenderConfigYAML(t *testing.T) {
 	inst := newInstance()
-	inst.Spec.Config = v1alpha1.TalonDBConfig{
+	inst.Spec.Config = v1alpha1.TlnDBConfig{
 		DBPath:      "/data/x.bbolt",
 		TCP:         ":9899",
 		HTTP:        ":8080",
@@ -91,7 +91,7 @@ func TestRenderConfigYAML(t *testing.T) {
 
 func TestBuildStatefulSet_PortsProbesVolumes(t *testing.T) {
 	inst := newInstance()
-	inst.Spec.Config = v1alpha1.TalonDBConfig{TCP: ":9899", HTTP: ":8080"}
+	inst.Spec.Config = v1alpha1.TlnDBConfig{TCP: ":9899", HTTP: ":8080"}
 
 	sts := BuildStatefulSet(inst, "hash123")
 
@@ -196,7 +196,7 @@ func envValue(env []corev1.EnvVar, name string) (string, bool) {
 func TestReplicatedStatefulSets(t *testing.T) {
 	inst := newInstance()
 	inst.Spec.Mode = "replicated"
-	inst.Spec.Config = v1alpha1.TalonDBConfig{TCP: ":9899", HTTP: ":8080"}
+	inst.Spec.Config = v1alpha1.TlnDBConfig{TCP: ":9899", HTTP: ":8080"}
 
 	leader := BuildLeaderStatefulSet(inst, "h", 100000)
 	if leader.Name != "db1-leader" {
@@ -209,11 +209,11 @@ func TestReplicatedStatefulSets(t *testing.T) {
 		t.Errorf("leader replicas = %d, want 1", *leader.Spec.Replicas)
 	}
 	lc := leader.Spec.Template.Spec.Containers[0]
-	if v, _ := envValue(lc.Env, "TALONDB_ROLE"); v != RoleLeader {
-		t.Errorf("leader TALONDB_ROLE = %q", v)
+	if v, _ := envValue(lc.Env, "TLNDB_ROLE"); v != RoleLeader {
+		t.Errorf("leader TLNDB_ROLE = %q", v)
 	}
-	if v, _ := envValue(lc.Env, "TALONDB_OPLOG_RETENTION"); v != "100000" {
-		t.Errorf("leader TALONDB_OPLOG_RETENTION = %q", v)
+	if v, _ := envValue(lc.Env, "TLNDB_OPLOG_RETENTION"); v != "100000" {
+		t.Errorf("leader TLNDB_OPLOG_RETENTION = %q", v)
 	}
 
 	fol := BuildFollowerStatefulSet(inst, "h", "db1.ns1.svc.cluster.local:9899", 3, 0)
@@ -227,13 +227,13 @@ func TestReplicatedStatefulSets(t *testing.T) {
 		t.Errorf("follower selector missing role=follower")
 	}
 	fc := fol.Spec.Template.Spec.Containers[0]
-	if v, _ := envValue(fc.Env, "TALONDB_ROLE"); v != RoleFollower {
-		t.Errorf("follower TALONDB_ROLE = %q", v)
+	if v, _ := envValue(fc.Env, "TLNDB_ROLE"); v != RoleFollower {
+		t.Errorf("follower TLNDB_ROLE = %q", v)
 	}
-	if v, _ := envValue(fc.Env, "TALONDB_REPLICATE_FROM"); v != "db1.ns1.svc.cluster.local:9899" {
-		t.Errorf("follower TALONDB_REPLICATE_FROM = %q", v)
+	if v, _ := envValue(fc.Env, "TLNDB_REPLICATE_FROM"); v != "db1.ns1.svc.cluster.local:9899" {
+		t.Errorf("follower TLNDB_REPLICATE_FROM = %q", v)
 	}
-	if _, ok := envValue(fc.Env, "TALONDB_OPLOG_RETENTION"); ok {
+	if _, ok := envValue(fc.Env, "TLNDB_OPLOG_RETENTION"); ok {
 		t.Errorf("follower should omit retention env when 0")
 	}
 }
@@ -261,7 +261,7 @@ func TestReplicatedServices(t *testing.T) {
 
 func TestBuildService_Ports(t *testing.T) {
 	inst := newInstance()
-	inst.Spec.Config = v1alpha1.TalonDBConfig{TCP: ":9899", HTTP: ":8080"}
+	inst.Spec.Config = v1alpha1.TlnDBConfig{TCP: ":9899", HTTP: ":8080"}
 	svc := BuildService(inst)
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
 		t.Errorf("default service type = %q", svc.Spec.Type)

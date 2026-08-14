@@ -1,4 +1,4 @@
-# Default values for talon-db-operator.
+# Default values for tln-db-operator.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -7,7 +7,7 @@ replicaCount: 1
 
 image:
   # -- Operator image repository.
-  repository: ghcr.io/opentalon/talon-db-operator
+  repository: ghcr.io/opentalon/tln-db-operator
   # -- Image pull policy.
   pullPolicy: IfNotPresent
   # -- Overrides the image tag whose default is the chart appVersion.

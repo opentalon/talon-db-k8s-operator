@@ -19,18 +19,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
 // PVCName returns the name of the standalone data PVC.
-func PVCName(instance *v1alpha1.TalonDB) string {
+func PVCName(instance *v1alpha1.TlnDB) string {
 	return ResourceName(instance) + "-data"
 }
 
 // BuildPVC builds a standalone PersistentVolumeClaim for /data. This is used
 // when the operator manages the claim directly rather than via the
 // StatefulSet's VolumeClaimTemplates.
-func BuildPVC(instance *v1alpha1.TalonDB) *corev1.PersistentVolumeClaim {
+func BuildPVC(instance *v1alpha1.TlnDB) *corev1.PersistentVolumeClaim {
 	persistence := instance.Spec.Storage.Persistence
 
 	size := persistence.Size

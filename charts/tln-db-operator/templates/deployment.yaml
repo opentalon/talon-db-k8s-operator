@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "talon-db-operator.fullname" . }}-controller-manager
+  name: {{ include "tln-db-operator.fullname" . }}-controller-manager
   namespace: {{ .Release.Namespace }}
   labels:
     control-plane: controller-manager
-    {{- include "talon-db-operator.labels" . | nindent 4 }}
+    {{- include "tln-db-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       control-plane: controller-manager
-      {{- include "talon-db-operator.selectorLabels" . | nindent 6 }}
+      {{- include "tln-db-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -21,13 +21,13 @@ spec:
         {{- end }}
       labels:
         control-plane: controller-manager
-        {{- include "talon-db-operator.selectorLabels" . | nindent 8 }}
+        {{- include "tln-db-operator.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "talon-db-operator.serviceAccountName" . }}
+      serviceAccountName: {{ include "tln-db-operator.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -52,7 +52,7 @@ spec:
             - --enable-http2
             {{- end }}
           env:
-            - name: TALONDB_OPERATOR_NAMESPACE
+            - name: TLNDB_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace

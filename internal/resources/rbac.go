@@ -19,11 +19,11 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildServiceAccount creates the ServiceAccount used by the talon-db pod.
-func BuildServiceAccount(instance *v1alpha1.TalonDB) *corev1.ServiceAccount {
+// BuildServiceAccount creates the ServiceAccount used by the tln-db pod.
+func BuildServiceAccount(instance *v1alpha1.TlnDB) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceName(instance),
@@ -35,7 +35,7 @@ func BuildServiceAccount(instance *v1alpha1.TalonDB) *corev1.ServiceAccount {
 }
 
 // BuildRole grants the pod permission to read its own ConfigMap and emit events.
-func BuildRole(instance *v1alpha1.TalonDB) *rbacv1.Role {
+func BuildRole(instance *v1alpha1.TlnDB) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceName(instance),
@@ -59,7 +59,7 @@ func BuildRole(instance *v1alpha1.TalonDB) *rbacv1.Role {
 }
 
 // BuildRoleBinding binds the instance Role to its ServiceAccount.
-func BuildRoleBinding(instance *v1alpha1.TalonDB) *rbacv1.RoleBinding {
+func BuildRoleBinding(instance *v1alpha1.TlnDB) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceName(instance),

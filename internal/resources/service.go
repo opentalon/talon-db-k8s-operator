@@ -19,24 +19,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
 // BuildService creates the standalone client-facing Service exposing the
 // gRPC, HTTP and (optionally) metrics ports.
-func BuildService(instance *v1alpha1.TalonDB) *corev1.Service {
+func BuildService(instance *v1alpha1.TlnDB) *corev1.Service {
 	return serviceWith(instance, ResourceName(instance), SelectorLabels(instance))
 }
 
 // BuildWriteService is the replicated-mode primary Service; it targets the
 // leader pod only, so clients that write always hit the single writer.
-func BuildWriteService(instance *v1alpha1.TalonDB) *corev1.Service {
+func BuildWriteService(instance *v1alpha1.TlnDB) *corev1.Service {
 	return serviceWith(instance, ResourceName(instance), roleSelector(instance, RoleLeader))
 }
 
 // BuildReadService is the replicated-mode load-balanced read Service. It
 // targets follower pods, falling back to the leader when there are none.
-func BuildReadService(instance *v1alpha1.TalonDB) *corev1.Service {
+func BuildReadService(instance *v1alpha1.TlnDB) *corev1.Service {
 	role := RoleFollower
 	if instance.Spec.Replication.ReadReplicas == 0 {
 		role = RoleLeader
@@ -44,7 +44,7 @@ func BuildReadService(instance *v1alpha1.TalonDB) *corev1.Service {
 	return serviceWith(instance, ReadServiceName(instance), roleSelector(instance, role))
 }
 
-func serviceWith(instance *v1alpha1.TalonDB, name string, selector map[string]string) *corev1.Service {
+func serviceWith(instance *v1alpha1.TlnDB, name string, selector map[string]string) *corev1.Service {
 	svcSpec := instance.Spec.Networking.Service
 	svcType := svcSpec.Type
 	if svcType == "" {
@@ -77,7 +77,7 @@ func serviceWith(instance *v1alpha1.TalonDB, name string, selector map[string]st
 
 // BuildHeadlessService creates the headless Service that backs the
 // StatefulSet's stable per-pod DNS names.
-func BuildHeadlessService(instance *v1alpha1.TalonDB) *corev1.Service {
+func BuildHeadlessService(instance *v1alpha1.TlnDB) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      HeadlessServiceName(instance),
@@ -93,7 +93,7 @@ func BuildHeadlessService(instance *v1alpha1.TalonDB) *corev1.Service {
 	}
 }
 
-func buildServicePorts(instance *v1alpha1.TalonDB) []corev1.ServicePort {
+func buildServicePorts(instance *v1alpha1.TlnDB) []corev1.ServicePort {
 	grpcPort := PortFromAddr(instance.Spec.Config.TCP, DefaultGRPCPort)
 	httpPort := PortFromAddr(instance.Spec.Config.HTTP, DefaultHTTPPort)
 

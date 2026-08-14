@@ -1,10 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: talon-db-operator-system
+namespace: tln-db-operator-system
 
 commonLabels:
-  app.kubernetes.io/name: talon-db-operator
+  app.kubernetes.io/name: tln-db-operator
 
 resources:
   - ../manager
@@ -16,4 +16,4 @@ patches:
   - path: manager_config_patch.yaml
     target:
       kind: Deployment
-      name: talon-db-operator-controller-manager
+      name: tln-db-operator-controller-manager

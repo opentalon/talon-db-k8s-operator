@@ -20,16 +20,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildNetworkPolicy creates a NetworkPolicy for the TalonDB instance.
+// BuildNetworkPolicy creates a NetworkPolicy for the TlnDB instance.
 //
 // Default behaviour:
 //   - Allow ingress on the gRPC, HTTP and (when enabled) metrics ports.
 //   - Allow egress on port 53 (DNS).
 //   - User-supplied extra ingress/egress rules are merged in.
-func BuildNetworkPolicy(instance *v1alpha1.TalonDB) *networkingv1.NetworkPolicy {
+func BuildNetworkPolicy(instance *v1alpha1.TlnDB) *networkingv1.NetworkPolicy {
 	npSpec := instance.Spec.Networking.NetworkPolicy
 
 	ingressRules := buildDefaultIngressRules(instance)
@@ -56,7 +56,7 @@ func BuildNetworkPolicy(instance *v1alpha1.TalonDB) *networkingv1.NetworkPolicy 
 	}
 }
 
-func buildDefaultIngressRules(instance *v1alpha1.TalonDB) []networkingv1.NetworkPolicyIngressRule {
+func buildDefaultIngressRules(instance *v1alpha1.TlnDB) []networkingv1.NetworkPolicyIngressRule {
 	ports := []networkingv1.NetworkPolicyPort{
 		{Protocol: protocolTCP(), Port: portPtr(PortFromAddr(instance.Spec.Config.TCP, DefaultGRPCPort))},
 		{Protocol: protocolTCP(), Port: portPtr(PortFromAddr(instance.Spec.Config.HTTP, DefaultHTTPPort))},

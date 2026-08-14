@@ -1,5 +1,5 @@
 apiVersion: v2
-name: talon-db-operator
+name: tln-db-operator
 description: Kubernetes operator for managing OpenTalon LLM orchestration platform instances
 type: application
 version: 0.2.0
@@ -10,9 +10,9 @@ keywords:
   - operator
   - ai
   - orchestration
-home: https://github.com/opentalon/talon-db-k8s-operator
+home: https://github.com/opentalon/tln-db-k8s-operator
 sources:
-  - https://github.com/opentalon/talon-db-k8s-operator
+  - https://github.com/opentalon/tln-db-k8s-operator
 maintainers:
   - name: OpenTalon Authors
     url: https://github.com/opentalon

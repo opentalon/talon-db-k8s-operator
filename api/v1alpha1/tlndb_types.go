@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Phase constants describe the high-level lifecycle state of a TalonDB.
+// Phase constants describe the high-level lifecycle state of a TlnDB.
 const (
 	PhasePending      = "Pending"
 	PhaseProvisioning = "Provisioning"
@@ -41,9 +41,9 @@ const (
 	ConditionServiceMonitorReady = "ServiceMonitorReady"
 )
 
-// ImageSpec configures the talon-db container image.
+// ImageSpec configures the tln-db container image.
 type ImageSpec struct {
-	// Repository is the image repository, e.g. ghcr.io/opentalon/talon-db.
+	// Repository is the image repository, e.g. ghcr.io/opentalon/tln-db.
 	// +optional
 	Repository string `json:"repository,omitempty"`
 	// Tag is the image tag. Ignored when Digest is set.
@@ -61,12 +61,12 @@ type ImageSpec struct {
 	PullSecrets []corev1.LocalObjectReference `json:"pullSecrets,omitempty"`
 }
 
-// TalonDBConfig maps to the talondb-server config.yaml that the operator
-// renders into a ConfigMap and mounts at /etc/talondb/config.yaml.
-type TalonDBConfig struct {
+// TlnDBConfig maps to the tlndb-server config.yaml that the operator
+// renders into a ConfigMap and mounts at /etc/tlndb/config.yaml.
+type TlnDBConfig struct {
 	// DBPath is the path to the bbolt data file inside the container.
 	// +optional
-	// +kubebuilder:default="/data/talondb.bbolt"
+	// +kubebuilder:default="/data/tlndb.bbolt"
 	DBPath string `json:"dbPath,omitempty"`
 	// TCP is the gRPC listen address, e.g. ":9899".
 	// +optional
@@ -193,7 +193,7 @@ type ServiceMonitorSpec struct {
 
 // MetricsSpec configures Prometheus metrics exposure.
 type MetricsSpec struct {
-	// Enabled turns on the talon-db Prometheus /metrics listener and the
+	// Enabled turns on the tln-db Prometheus /metrics listener and the
 	// corresponding Service port. Defaults to true.
 	// +optional
 	// +kubebuilder:default=true
@@ -276,12 +276,12 @@ type SecuritySpec struct {
 	FSGroup *int64 `json:"fsGroup,omitempty"`
 }
 
-// TalonDBSpec defines the desired state of a TalonDB instance.
+// TlnDBSpec defines the desired state of a TlnDB instance.
 //
-// talon-db is a single-node, bbolt-backed database. Running more than one
+// tln-db is a single-node, bbolt-backed database. Running more than one
 // replica creates independent databases (each pod owns its own volume); it is
 // NOT a replicated/HA cluster.
-type TalonDBSpec struct {
+type TlnDBSpec struct {
 	// Mode selects the topology. "standalone" (default) runs a single
 	// StatefulSet. "replicated" runs a single-writer leader plus N
 	// read-only follower replicas that stream the leader's op-log.
@@ -305,7 +305,7 @@ type TalonDBSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 
 	// +optional
-	Config TalonDBConfig `json:"config,omitempty"`
+	Config TlnDBConfig `json:"config,omitempty"`
 
 	// ConfigFrom mounts an externally-managed ConfigMap (key config.yaml)
 	// instead of the operator-rendered one.
@@ -317,7 +317,7 @@ type TalonDBSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// EnvFrom injects environment variables from Secrets/ConfigMaps
-	// (e.g. TALONDB_* values or sensitive settings).
+	// (e.g. TLNDB_* values or sensitive settings).
 	// +optional
 	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
 
@@ -360,8 +360,8 @@ type TalonDBSpec struct {
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
-// TalonDBStatus defines the observed state of a TalonDB instance.
-type TalonDBStatus struct {
+// TlnDBStatus defines the observed state of a TlnDB instance.
+type TlnDBStatus struct {
 	// +optional
 	Phase string `json:"phase,omitempty"`
 	// +optional
@@ -388,24 +388,24 @@ type TalonDBStatus struct {
 // +kubebuilder:printcolumn:name="Image",type=string,JSONPath=".status.currentImage"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=".metadata.creationTimestamp"
 
-// TalonDB is the Schema for the talondbs API.
-type TalonDB struct {
+// TlnDB is the Schema for the tlndbs API.
+type TlnDB struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TalonDBSpec   `json:"spec,omitempty"`
-	Status TalonDBStatus `json:"status,omitempty"`
+	Spec   TlnDBSpec   `json:"spec,omitempty"`
+	Status TlnDBStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// TalonDBList contains a list of TalonDB.
-type TalonDBList struct {
+// TlnDBList contains a list of TlnDB.
+type TlnDBList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TalonDB `json:"items"`
+	Items           []TlnDB `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&TalonDB{}, &TalonDBList{})
+	SchemeBuilder.Register(&TlnDB{}, &TlnDBList{})
 }

@@ -19,11 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
+	v1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
 )
 
-// BuildPDB creates a PodDisruptionBudget for the TalonDB instance.
-func BuildPDB(instance *v1alpha1.TalonDB) *policyv1.PodDisruptionBudget {
+// BuildPDB creates a PodDisruptionBudget for the TlnDB instance.
+func BuildPDB(instance *v1alpha1.TlnDB) *policyv1.PodDisruptionBudget {
 	pdbSpec := instance.Spec.Availability.PodDisruptionBudget
 
 	pdb := &policyv1.PodDisruptionBudget{

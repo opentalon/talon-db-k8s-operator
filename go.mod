@@ -1,4 +1,4 @@
-module github.com/opentalon/talon-db-k8s-operator
+module github.com/opentalon/tln-db-k8s-operator
 
 go 1.24.0
 

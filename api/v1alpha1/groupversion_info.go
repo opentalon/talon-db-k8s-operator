@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package v1alpha1 contains API Schema definitions for the db.opentalon.io v1alpha1 API group.
+// Package v1alpha1 contains API Schema definitions for the db.tlndb.io v1alpha1 API group.
 // +kubebuilder:object:generate=true
-// +groupName=db.opentalon.io
+// +groupName=db.tlndb.io
 package v1alpha1
 
 import (
@@ -24,7 +24,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects.
-	GroupVersion = schema.GroupVersion{Group: "db.opentalon.io", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "db.tlndb.io", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add functions to this group's scheme.
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

@@ -39,13 +39,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	talondbv1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
-	"github.com/opentalon/talon-db-k8s-operator/internal/resources"
+	tlndbv1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
+	"github.com/opentalon/tln-db-k8s-operator/internal/resources"
 )
 
-// +kubebuilder:rbac:groups=db.opentalon.io,resources=talondbs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=db.opentalon.io,resources=talondbs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=db.opentalon.io,resources=talondbs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=db.tlndb.io,resources=tlndbs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=db.tlndb.io,resources=tlndbs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=db.tlndb.io,resources=tlndbs/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services;configmaps;secrets;persistentvolumeclaims;serviceaccounts;events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
@@ -55,17 +55,17 @@ import (
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
-// TalonDBReconciler reconciles a TalonDB resource.
-type TalonDBReconciler struct {
+// TlnDBReconciler reconciles a TlnDB resource.
+type TlnDBReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
 
 // SetupWithManager registers the controller and its owned-resource watches.
-func (r *TalonDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *TlnDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&talondbv1alpha1.TalonDB{}).
+		For(&tlndbv1alpha1.TlnDB{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
@@ -80,15 +80,15 @@ func (r *TalonDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // Reconcile is the main reconciliation loop.
-func (r *TalonDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *TlnDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	instance := &talondbv1alpha1.TalonDB{}
+	instance := &tlndbv1alpha1.TlnDB{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "unable to fetch TalonDB")
+		logger.Error(err, "unable to fetch TlnDB")
 		return ctrl.Result{}, err
 	}
 
@@ -105,23 +105,23 @@ func (r *TalonDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if instance.Status.Phase == "" {
-		if err := r.setPhase(ctx, instance, talondbv1alpha1.PhaseProvisioning); err != nil {
+		if err := r.setPhase(ctx, instance, tlndbv1alpha1.PhaseProvisioning); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	if err := r.reconcileResources(ctx, instance); err != nil {
 		r.Recorder.Eventf(instance, corev1.EventTypeWarning, "ReconcileError", "Failed to reconcile resources: %v", err)
-		_ = r.setPhase(ctx, instance, talondbv1alpha1.PhaseFailed)
+		_ = r.setPhase(ctx, instance, tlndbv1alpha1.PhaseFailed)
 		return ctrl.Result{}, err
 	}
 
 	return r.syncStatus(ctx, instance)
 }
 
-func (r *TalonDBReconciler) reconcileDeletion(ctx context.Context, instance *talondbv1alpha1.TalonDB) (ctrl.Result, error) {
+func (r *TlnDBReconciler) reconcileDeletion(ctx context.Context, instance *tlndbv1alpha1.TlnDB) (ctrl.Result, error) {
 	if controllerutil.ContainsFinalizer(instance, resources.FinalizerName) {
-		if err := r.setPhase(ctx, instance, talondbv1alpha1.PhaseTerminating); err != nil {
+		if err := r.setPhase(ctx, instance, tlndbv1alpha1.PhaseTerminating); err != nil {
 			return ctrl.Result{}, err
 		}
 		// Owned resources are garbage-collected via OwnerReferences.
@@ -133,7 +133,7 @@ func (r *TalonDBReconciler) reconcileDeletion(ctx context.Context, instance *tal
 	return ctrl.Result{}, nil
 }
 
-func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *talondbv1alpha1.TalonDB) error {
+func (r *TlnDBReconciler) reconcileResources(ctx context.Context, instance *tlndbv1alpha1.TlnDB) error {
 	managed := []string{}
 
 	// ServiceAccount (only when the user hasn't supplied one).
@@ -155,7 +155,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 			return fmt.Errorf("RoleBinding: %w", err)
 		}
 		managed = append(managed, "RoleBinding/"+rb.Name)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionRBACReady, metav1.ConditionTrue, "RBACReady", "RBAC reconciled")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionRBACReady, metav1.ConditionTrue, "RBACReady", "RBAC reconciled")
 	}
 
 	// ConfigMap (rendered or external via ConfigFrom).
@@ -164,14 +164,14 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 		externalCM := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.ConfigFrom.Name}, externalCM); err != nil {
 			if apierrors.IsNotFound(err) {
-				r.setCondition(ctx, instance, talondbv1alpha1.ConditionConfigMapReady, metav1.ConditionFalse,
+				r.setCondition(ctx, instance, tlndbv1alpha1.ConditionConfigMapReady, metav1.ConditionFalse,
 					"ExternalConfigMapNotFound", fmt.Sprintf("referenced ConfigMap %q not found", instance.Spec.ConfigFrom.Name))
 				return fmt.Errorf("external ConfigMap %q not found: %w", instance.Spec.ConfigFrom.Name, err)
 			}
 			return err
 		}
 		configHash = resources.HashStringData(externalCM.Data)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionConfigMapReady, metav1.ConditionTrue, "ExternalConfigMapFound", "External ConfigMap found")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionConfigMapReady, metav1.ConditionTrue, "ExternalConfigMapFound", "External ConfigMap found")
 	} else {
 		cm := resources.BuildConfigMap(instance)
 		if err := r.createOrUpdateConfigMap(ctx, instance, cm); err != nil {
@@ -179,7 +179,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 		}
 		configHash = resources.HashStringData(cm.Data)
 		managed = append(managed, "ConfigMap/"+cm.Name)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionConfigMapReady, metav1.ConditionTrue, "ConfigMapReady", "ConfigMap reconciled")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionConfigMapReady, metav1.ConditionTrue, "ConfigMapReady", "ConfigMap reconciled")
 	}
 
 	// Headless Service (stable pod DNS).
@@ -225,7 +225,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 			return fmt.Errorf("read Service: %w", err)
 		}
 		managed = append(managed, "Service/"+readSvc.Name)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Services reconciled")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Services reconciled")
 	} else {
 		sts := resources.BuildStatefulSet(instance, configHash)
 		if err := r.createOrUpdateStatefulSet(ctx, instance, sts); err != nil {
@@ -238,7 +238,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 			return fmt.Errorf("service: %w", err)
 		}
 		managed = append(managed, "Service/"+svc.Name)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Service reconciled")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionServiceReady, metav1.ConditionTrue, "ServiceReady", "Service reconciled")
 	}
 
 	// Ingress (optional).
@@ -257,7 +257,7 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 			return fmt.Errorf("NetworkPolicy: %w", err)
 		}
 		managed = append(managed, "NetworkPolicy/"+np.Name)
-		r.setCondition(ctx, instance, talondbv1alpha1.ConditionNetworkPolicyReady, metav1.ConditionTrue, "NetworkPolicyReady", "NetworkPolicy reconciled")
+		r.setCondition(ctx, instance, tlndbv1alpha1.ConditionNetworkPolicyReady, metav1.ConditionTrue, "NetworkPolicyReady", "NetworkPolicy reconciled")
 	}
 
 	// ServiceMonitor (optional; degrades gracefully without the CRD).
@@ -265,10 +265,10 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 		sm := resources.BuildServiceMonitor(instance)
 		if err := r.createOrUpdateServiceMonitor(ctx, instance, sm); err != nil {
 			log.FromContext(ctx).Info("ServiceMonitor reconcile skipped (CRD may not be installed)", "error", err.Error())
-			r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceMonitorReady, metav1.ConditionFalse, "ServiceMonitorCRDMissing", err.Error())
+			r.setCondition(ctx, instance, tlndbv1alpha1.ConditionServiceMonitorReady, metav1.ConditionFalse, "ServiceMonitorCRDMissing", err.Error())
 		} else {
 			managed = append(managed, "ServiceMonitor/"+sm.GetName())
-			r.setCondition(ctx, instance, talondbv1alpha1.ConditionServiceMonitorReady, metav1.ConditionTrue, "ServiceMonitorReady", "ServiceMonitor reconciled")
+			r.setCondition(ctx, instance, tlndbv1alpha1.ConditionServiceMonitorReady, metav1.ConditionTrue, "ServiceMonitorReady", "ServiceMonitor reconciled")
 		}
 	}
 
@@ -306,14 +306,14 @@ func (r *TalonDBReconciler) reconcileResources(ctx context.Context, instance *ta
 
 // primaryStatefulSetName is the StatefulSet whose readiness gates the
 // instance phase: the leader in replicated mode, else the sole set.
-func primaryStatefulSetName(instance *talondbv1alpha1.TalonDB) string {
+func primaryStatefulSetName(instance *tlndbv1alpha1.TlnDB) string {
 	if resources.Replicated(instance) {
 		return resources.LeaderStatefulSetName(instance)
 	}
 	return resources.ResourceName(instance)
 }
 
-func (r *TalonDBReconciler) syncStatus(ctx context.Context, instance *talondbv1alpha1.TalonDB) (ctrl.Result, error) {
+func (r *TlnDBReconciler) syncStatus(ctx context.Context, instance *tlndbv1alpha1.TlnDB) (ctrl.Result, error) {
 	sts := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: primaryStatefulSetName(instance)}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -335,16 +335,16 @@ func (r *TalonDBReconciler) syncStatus(ctx context.Context, instance *talondbv1a
 	var phase string
 	switch {
 	case sts.Status.ObservedGeneration < sts.Generation:
-		phase = talondbv1alpha1.PhaseProvisioning
+		phase = tlndbv1alpha1.PhaseProvisioning
 	case ready < desiredReplicas:
-		phase = talondbv1alpha1.PhaseDegraded
+		phase = tlndbv1alpha1.PhaseDegraded
 	default:
-		phase = talondbv1alpha1.PhaseRunning
+		phase = tlndbv1alpha1.PhaseRunning
 	}
 	instance.Status.Phase = phase
 
-	r.setConditionOnInstance(instance, talondbv1alpha1.ConditionStatefulSetReady, func() (metav1.ConditionStatus, string, string) {
-		if phase == talondbv1alpha1.PhaseRunning {
+	r.setConditionOnInstance(instance, tlndbv1alpha1.ConditionStatefulSetReady, func() (metav1.ConditionStatus, string, string) {
+		if phase == tlndbv1alpha1.PhaseRunning {
 			return metav1.ConditionTrue, "StatefulSetReady", fmt.Sprintf("%d/%d replicas ready", ready, desiredReplicas)
 		}
 		return metav1.ConditionFalse, "StatefulSetNotReady", fmt.Sprintf("%d/%d replicas ready", ready, desiredReplicas)
@@ -354,7 +354,7 @@ func (r *TalonDBReconciler) syncStatus(ctx context.Context, instance *talondbv1a
 		return ctrl.Result{}, err
 	}
 
-	if phase != talondbv1alpha1.PhaseRunning {
+	if phase != tlndbv1alpha1.PhaseRunning {
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 	return ctrl.Result{}, nil
@@ -362,7 +362,7 @@ func (r *TalonDBReconciler) syncStatus(ctx context.Context, instance *talondbv1a
 
 // ── Create-or-update helpers ──────────────────────────────────────────────────
 
-func (r *TalonDBReconciler) createOrUpdateConfigMap(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *corev1.ConfigMap) error {
+func (r *TlnDBReconciler) createOrUpdateConfigMap(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *corev1.ConfigMap) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func (r *TalonDBReconciler) createOrUpdateConfigMap(ctx context.Context, instanc
 	return nil
 }
 
-func (r *TalonDBReconciler) createOrUpdateServiceAccount(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *corev1.ServiceAccount) error {
+func (r *TlnDBReconciler) createOrUpdateServiceAccount(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *corev1.ServiceAccount) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func (r *TalonDBReconciler) createOrUpdateServiceAccount(ctx context.Context, in
 	return r.Update(ctx, existing)
 }
 
-func (r *TalonDBReconciler) createOrUpdateRole(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *rbacv1.Role) error {
+func (r *TlnDBReconciler) createOrUpdateRole(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *rbacv1.Role) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -418,7 +418,7 @@ func (r *TalonDBReconciler) createOrUpdateRole(ctx context.Context, instance *ta
 	return nil
 }
 
-func (r *TalonDBReconciler) createOrUpdateRoleBinding(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *rbacv1.RoleBinding) error {
+func (r *TlnDBReconciler) createOrUpdateRoleBinding(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *rbacv1.RoleBinding) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -439,7 +439,7 @@ func (r *TalonDBReconciler) createOrUpdateRoleBinding(ctx context.Context, insta
 	return nil
 }
 
-func (r *TalonDBReconciler) createOrUpdateStatefulSet(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *appsv1.StatefulSet) error {
+func (r *TlnDBReconciler) createOrUpdateStatefulSet(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *appsv1.StatefulSet) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -469,7 +469,7 @@ func (r *TalonDBReconciler) createOrUpdateStatefulSet(ctx context.Context, insta
 
 // deleteStatefulSetIfExists removes a StatefulSet by name, ignoring
 // not-found. Used to prune the follower set when readReplicas drops to 0.
-func (r *TalonDBReconciler) deleteStatefulSetIfExists(ctx context.Context, namespace, name string) error {
+func (r *TlnDBReconciler) deleteStatefulSetIfExists(ctx context.Context, namespace, name string) error {
 	existing := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, existing); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -483,7 +483,7 @@ func (r *TalonDBReconciler) deleteStatefulSetIfExists(ctx context.Context, names
 	return nil
 }
 
-func (r *TalonDBReconciler) createOrUpdateService(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *corev1.Service) error {
+func (r *TlnDBReconciler) createOrUpdateService(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *corev1.Service) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -503,7 +503,7 @@ func (r *TalonDBReconciler) createOrUpdateService(ctx context.Context, instance 
 	return r.Update(ctx, existing)
 }
 
-func (r *TalonDBReconciler) createOrUpdateIngress(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *networkingv1.Ingress) error {
+func (r *TlnDBReconciler) createOrUpdateIngress(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *networkingv1.Ingress) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -522,7 +522,7 @@ func (r *TalonDBReconciler) createOrUpdateIngress(ctx context.Context, instance 
 	return r.Update(ctx, existing)
 }
 
-func (r *TalonDBReconciler) createOrUpdateNetworkPolicy(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *networkingv1.NetworkPolicy) error {
+func (r *TlnDBReconciler) createOrUpdateNetworkPolicy(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *networkingv1.NetworkPolicy) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -539,7 +539,7 @@ func (r *TalonDBReconciler) createOrUpdateNetworkPolicy(ctx context.Context, ins
 	return r.Update(ctx, existing)
 }
 
-func (r *TalonDBReconciler) createOrUpdateServiceMonitor(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *unstructured.Unstructured) error {
+func (r *TlnDBReconciler) createOrUpdateServiceMonitor(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *unstructured.Unstructured) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		log.FromContext(ctx).V(1).Info("could not set owner reference on ServiceMonitor", "error", err)
 	}
@@ -556,7 +556,7 @@ func (r *TalonDBReconciler) createOrUpdateServiceMonitor(ctx context.Context, in
 	return r.Update(ctx, desired)
 }
 
-func (r *TalonDBReconciler) createOrUpdatePDB(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *policyv1.PodDisruptionBudget) error {
+func (r *TlnDBReconciler) createOrUpdatePDB(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *policyv1.PodDisruptionBudget) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -576,7 +576,7 @@ func (r *TalonDBReconciler) createOrUpdatePDB(ctx context.Context, instance *tal
 	return nil
 }
 
-func (r *TalonDBReconciler) createOrUpdateHPA(ctx context.Context, instance *talondbv1alpha1.TalonDB, desired *autoscalingv2.HorizontalPodAutoscaler) error {
+func (r *TlnDBReconciler) createOrUpdateHPA(ctx context.Context, instance *tlndbv1alpha1.TlnDB, desired *autoscalingv2.HorizontalPodAutoscaler) error {
 	if err := controllerutil.SetControllerReference(instance, desired, r.Scheme); err != nil {
 		return err
 	}
@@ -598,7 +598,7 @@ func (r *TalonDBReconciler) createOrUpdateHPA(ctx context.Context, instance *tal
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
-func (r *TalonDBReconciler) setPhase(ctx context.Context, instance *talondbv1alpha1.TalonDB, phase string) error {
+func (r *TlnDBReconciler) setPhase(ctx context.Context, instance *tlndbv1alpha1.TlnDB, phase string) error {
 	patch := client.MergeFrom(instance.DeepCopy())
 	instance.Status.Phase = phase
 	now := metav1.Now()
@@ -609,7 +609,7 @@ func (r *TalonDBReconciler) setPhase(ctx context.Context, instance *talondbv1alp
 	return nil
 }
 
-func (r *TalonDBReconciler) setCondition(ctx context.Context, instance *talondbv1alpha1.TalonDB, condType string, status metav1.ConditionStatus, reason, message string) {
+func (r *TlnDBReconciler) setCondition(ctx context.Context, instance *tlndbv1alpha1.TlnDB, condType string, status metav1.ConditionStatus, reason, message string) {
 	patch := client.MergeFrom(instance.DeepCopy())
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               condType,
@@ -623,7 +623,7 @@ func (r *TalonDBReconciler) setCondition(ctx context.Context, instance *talondbv
 	}
 }
 
-func (r *TalonDBReconciler) setConditionOnInstance(instance *talondbv1alpha1.TalonDB, condType string, fn func() (metav1.ConditionStatus, string, string)) {
+func (r *TlnDBReconciler) setConditionOnInstance(instance *tlndbv1alpha1.TlnDB, condType string, fn func() (metav1.ConditionStatus, string, string)) {
 	status, reason, message := fn()
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               condType,

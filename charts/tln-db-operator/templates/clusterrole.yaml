@@ -2,9 +2,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "talon-db-operator.fullname" . }}-manager-role
+  name: {{ include "tln-db-operator.fullname" . }}-manager-role
   labels:
-    {{- include "talon-db-operator.labels" . | nindent 4 }}
+    {{- include "tln-db-operator.labels" . | nindent 4 }}
 rules:
   # Core resources
   - apiGroups: [""]
@@ -36,15 +36,15 @@ rules:
     resources: ["ingresses", "networkpolicies"]
     verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
 
-  # TalonDB resources
-  - apiGroups: ["db.opentalon.io"]
-    resources: ["talondbs"]
+  # TlnDB resources
+  - apiGroups: ["db.tlndb.io"]
+    resources: ["tlndbs"]
     verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
-  - apiGroups: ["db.opentalon.io"]
-    resources: ["talondbs/finalizers"]
+  - apiGroups: ["db.tlndb.io"]
+    resources: ["tlndbs/finalizers"]
     verbs: ["update"]
-  - apiGroups: ["db.opentalon.io"]
-    resources: ["talondbs/status"]
+  - apiGroups: ["db.tlndb.io"]
+    resources: ["tlndbs/status"]
     verbs: ["get", "patch", "update"]
 
   # Policy resources

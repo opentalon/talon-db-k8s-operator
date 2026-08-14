@@ -58,9 +58,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - db.opentalon.io
+  - db.tlndb.io
   resources:
-  - talondbs
+  - tlndbs
   verbs:
   - create
   - delete
@@ -70,15 +70,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - db.opentalon.io
+  - db.tlndb.io
   resources:
-  - talondbs/finalizers
+  - tlndbs/finalizers
   verbs:
   - update
 - apiGroups:
-  - db.opentalon.io
+  - db.tlndb.io
   resources:
-  - talondbs/status
+  - tlndbs/status
   verbs:
   - get
   - patch

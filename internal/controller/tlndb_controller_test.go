@@ -23,21 +23,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	talondbv1alpha1 "github.com/opentalon/talon-db-k8s-operator/api/v1alpha1"
-	"github.com/opentalon/talon-db-k8s-operator/internal/resources"
+	tlndbv1alpha1 "github.com/opentalon/tln-db-k8s-operator/api/v1alpha1"
+	"github.com/opentalon/tln-db-k8s-operator/internal/resources"
 )
 
 func TestReconcilerImplementsInterface(t *testing.T) {
-	var _ reconcile.Reconciler = &TalonDBReconciler{}
+	var _ reconcile.Reconciler = &TlnDBReconciler{}
 }
 
 func TestSetConditionOnInstance(t *testing.T) {
-	r := &TalonDBReconciler{}
-	inst := &talondbv1alpha1.TalonDB{}
-	r.setConditionOnInstance(inst, talondbv1alpha1.ConditionStatefulSetReady, func() (metav1.ConditionStatus, string, string) {
+	r := &TlnDBReconciler{}
+	inst := &tlndbv1alpha1.TlnDB{}
+	r.setConditionOnInstance(inst, tlndbv1alpha1.ConditionStatefulSetReady, func() (metav1.ConditionStatus, string, string) {
 		return metav1.ConditionTrue, "Ready", "ok"
 	})
-	cond := apimeta.FindStatusCondition(inst.Status.Conditions, talondbv1alpha1.ConditionStatefulSetReady)
+	cond := apimeta.FindStatusCondition(inst.Status.Conditions, tlndbv1alpha1.ConditionStatefulSetReady)
 	if cond == nil {
 		t.Fatal("condition not set")
 	}

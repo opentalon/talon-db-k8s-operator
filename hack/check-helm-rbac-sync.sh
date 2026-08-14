@@ -3,7 +3,7 @@
 #
 # Verifies that every RBAC permission from the kubebuilder-generated role
 # (config/rbac/role.yaml) is present in the Helm chart ClusterRole
-# (charts/talon-db-operator/templates/clusterrole.yaml).
+# (charts/tln-db-operator/templates/clusterrole.yaml).
 #
 # The generated role is the source of truth (derived from +kubebuilder:rbac
 # markers). The Helm chart may be a superset but must not be missing any
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 GENERATED="config/rbac/role.yaml"
-HELM="charts/talon-db-operator/templates/clusterrole.yaml"
+HELM="charts/tln-db-operator/templates/clusterrole.yaml"
 
 if [ ! -f "$GENERATED" ]; then
   echo "::error::Generated RBAC not found at $GENERATED — run 'make manifests' first"
@@ -109,7 +109,7 @@ if [ -n "$MISSING" ]; then
     echo "  apiGroup=$group  resource=$r  verb=$v"
   done
   echo ""
-  echo "Fix: update charts/talon-db-operator/templates/clusterrole.yaml to match"
+  echo "Fix: update charts/tln-db-operator/templates/clusterrole.yaml to match"
   echo "the kubebuilder markers in internal/controller/."
   exit 1
 fi

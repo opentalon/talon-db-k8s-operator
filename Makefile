@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Image URL to use all building/pushing image targets
-IMAGE_TAG_BASE ?= ghcr.io/opentalon/talon-db-operator
+IMAGE_TAG_BASE ?= ghcr.io/opentalon/tln-db-operator
 IMG ?= $(IMAGE_TAG_BASE):latest
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest (see ./Makefile).
@@ -104,10 +104,10 @@ docker-push: ## Push docker image with the manager.
 
 .PHONY: docker-buildx
 docker-buildx: ## Build and push docker image for the manager for cross-platform support.
-	- $(CONTAINER_TOOL) buildx create --name talon-db-operator-builder
-	$(CONTAINER_TOOL) buildx use talon-db-operator-builder
+	- $(CONTAINER_TOOL) buildx create --name tln-db-operator-builder
+	$(CONTAINER_TOOL) buildx use tln-db-operator-builder
 	- $(CONTAINER_TOOL) buildx build --push --platform linux/arm64,linux/amd64 --tag ${IMG} -f Dockerfile .
-	- $(CONTAINER_TOOL) buildx rm talon-db-operator-builder
+	- $(CONTAINER_TOOL) buildx rm tln-db-operator-builder
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

@@ -193,27 +193,27 @@ jobs:
       - name: Wait for operator
         run: |
           kubectl wait --for=condition=available --timeout=180s \
-            deployment/talon-db-operator-controller-manager \
-            -n talon-db-operator-system
+            deployment/tln-db-operator-controller-manager \
+            -n tln-db-operator-system
 
       - name: Debug operator status
         if: failure()
         run: |
           echo "=== Deployment status ==="
-          kubectl get deployment -n talon-db-operator-system
+          kubectl get deployment -n tln-db-operator-system
           echo "=== Pod status ==="
-          kubectl get pods -n talon-db-operator-system
+          kubectl get pods -n tln-db-operator-system
           echo "=== Pod logs ==="
-          kubectl logs -n talon-db-operator-system -l control-plane=controller-manager --tail=100 || true
+          kubectl logs -n tln-db-operator-system -l control-plane=controller-manager --tail=100 || true
           echo "=== Pod describe ==="
-          kubectl describe pods -n talon-db-operator-system || true
+          kubectl describe pods -n tln-db-operator-system || true
 
       - name: Dump operator logs on failure
         if: failure()
         run: |
           echo "=== Operator pod status ==="
-          kubectl get pods -n talon-db-operator-system
+          kubectl get pods -n tln-db-operator-system
           echo "=== OpenTalonInstance resources ==="
-          kubectl get talondbs -A -o wide || true
+          kubectl get tlndbs -A -o wide || true
           echo "=== Operator logs ==="
-          kubectl logs -n talon-db-operator-system -l control-plane=controller-manager --tail=-1 || true
+          kubectl logs -n tln-db-operator-system -l control-plane=controller-manager --tail=-1 || true
